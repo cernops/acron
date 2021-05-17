@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+#
+# (C) Copyright 2019-2020 CERN
+#
+# This  software  is  distributed  under  the  terms  of  the  GNU  General  Public  Licence  version  3
+# (GPL  Version 3), copied verbatim in the file "COPYING" /copied verbatim below.
+#
+# In applying this licence, CERN does not waive the privileges and immunities granted to it
+# by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+#
+'''Acron file backend credentials deleter'''
+
+import argparse
+import os
+import sys
+import pkg_resources
+import yaml
+from acron.errors import ERRORS
+
+with open('/etc/acron/server.config', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+with open(os.path.join(config['CREDS']['CONFIG'], 'file.config'), 'r') as config_file:
+    config['CREDS'].update(yaml.safe_load(config_file))
+
+__author__ = 'Philippe Ganz (CERN)'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
+__maintainer__ = 'Philippe Ganz (CERN)'
+__email__ = 'philippe.ganz@cern.ch'
+__status__ = 'Development'
+
+
+def delete_creds(username):
+    '''
+    Delete the credentials from the shared file system.
+
+    :param username: user to delete the credentials for
+    '''
+    keytab_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.keytab.gpg')
+    keytab_cached = os.path.join(config['CREDS']['CACHE'], username + '.keytab')
+
+    status_code = ERRORS['OK']
+
+    try:
+        os.remove(keytab_cached)
+    except FileNotFoundError:
+        pass
+
+    if not os.path.exists(keytab_encrypted):
+        sys.stderr.write('File creds storage: no credentials found to delete.')
+        status_code = ERRORS['NOT_FOUND']
+    else:
+        try:
+            os.remove(keytab_encrypted)
+        except OSError as error:
+            sys.stderr.write('File creds storage: could not delete creds. ' + str(error) + '\n')
+            status_code = ERRORS['BACKEND_ERROR']
+
+    return status_code
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='delete_creds', description='Acron credential removal tool.')
+    parser.add_argument(
+        '-v', '--version', action='version',
+        version=pkg_resources.require('acron')[0].version)
+    parser.add_argument('username', help='User to remove the credentials for.')
+    args = parser.parse_args()
+
+    sys.exit(delete_creds(args.username))

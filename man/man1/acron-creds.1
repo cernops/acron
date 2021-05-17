@@ -1,0 +1,88 @@
+.\" Manpage for acron.
+.\" Contact acron-devs@cern.ch to report errors or typos.
+.TH ACRON-CREDS 1 "27/02/2020" "Acron 0.10.2" "Acron Manual"
+
+.SH NAME
+acron-creds \- Manage credentials on the server
+
+.SH SYNOPSIS
+acron creds [-h] <command> [<args>]
+
+.SH DESCRIPTION
+This command acts on credentials on the acron server.
+It is only possible to manage credentials from the account owning them.
+
+.SH OPTIONS
+.TP 4
+.B -h, --help
+Print a short help message.
+
+.SH COMMANDS
+.B upload
+.RS 4
+Upload a new keytab to the server.
+.PP
+Two options are available to upload new credentials, either by specifying the path to the keytab or to automatically generate a new one.
+.TP 4
+.B -f, --file FILE
+Path to the keytab to upload.
+.TP 4
+.B -g, --generate
+Generate a new keytab for the current user.
+.RE
+.PP
+.B status
+.RS 4
+Get the status of the credentials on the server. Does NOT download the keytab.
+.RE
+.PP
+.B delete
+.RS 4
+Delete the keytab from the server.
+.RE
+
+.SH EXIT CODES
+.TP 4
+.B 0
+All good.
+.TP 4
+.B 1
+Bad arguments.
+.TP 4
+.B 2
+Credentials are not valid.
+.TP 4
+.B 3
+Not allowed to access the requested resource.
+.TP 4
+.B 5
+The requested resource could not be found.
+.TP 4
+.B 6
+Unknown issue with the backend.
+.TP 4
+.B 7
+User error, eg wrong format.
+.TP 4
+.B 8
+Aborted operation.
+
+.SH EXAMPLES
+.TP 4
+.B Generate a keytab and upload it to the server
+acron creds upload -g
+.TP 4
+.B Check for the status of the credentials on the server
+acron creds status
+.TP 4
+.B Delete the credentials from the server
+acron creds delete
+
+.SH SEE ALSO
+acron(1), acron-jobs(1)
+
+.SH BUGS
+No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
+
+.SH AUTHOR
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)

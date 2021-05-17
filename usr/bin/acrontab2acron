@@ -1,0 +1,94 @@
+#!/usr/bin/python3
+''' Helper script to migrate legacy acrontab files to the new service '''
+import re
+import os
+import sys
+from subprocess import Popen, PIPE
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from acron.utils import check_schedule
+
+def getargs():
+    """ get arguments """
+    aparser = ArgumentParser(
+        description='Conversion of acrontab to the new acron',
+        formatter_class=ArgumentDefaultsHelpFormatter)
+    aparser.add_argument('-f', '--file',
+                         help='input file',
+                         default=None,
+                         action='store',
+                         dest='filename')
+    return aparser.parse_args()
+
+def define_job(schedule, target, command, comment, enabled=True):
+    ''' print out the job definition in the new format '''
+    if enabled:
+        print("acron jobs create -s '%s' -t '%s' -d \"%s\" -c '%s'" %
+              (schedule, target, comment, command))
+    else:
+        print("# Detected a disabled valid job. To create this job do")
+        print("# acron jobs create -s '%s' -t '%s' -d \"%s\" -c '%s'" %
+              (schedule, target, comment, command))
+        print("# To disable it in the new setup, use: acron jobs disable <jobid>")
+
+def parse_job(line):
+    ''' try to parse a line as a job definition '''
+    fields = line.split()
+    schedule = " ".join(fields[0:5])
+    check_schedule(schedule)
+    if len(fields) >= 5:
+        target = fields[5]
+    else:
+        AssertionError("Failed to parse the target.")
+    if len(fields[6:]) > 0:
+        command = " ".join(fields[6:])
+    else:
+        raise AssertionError("Invalid command or no command given at all.")
+    return schedule, target, command
+
+def read_acrontab(acrontab):
+    ''' process the acrontab definition line by line '''
+    related_comment = "Imported job"
+    comment = re.compile(r"^\s*\#")
+    for line in acrontab:
+        if isinstance(line, str):
+            line = line.rstrip().lstrip()
+        else:
+            line = line.decode("utf-8").rstrip().lstrip()
+        if comment.match(line):
+            stripped_comment = line[1:].lstrip()
+            # check if this is a commented job
+            try:
+                schedule, target, command = parse_job(stripped_comment)
+                define_job(schedule, target, command, related_comment, enabled=False)
+            except AssertionError:
+                print("# Comment line: %s" % line)
+                related_comment = stripped_comment
+        else:
+            try:
+                schedule, target, command = parse_job(line)
+                define_job(schedule, target, command, related_comment, enabled=True)
+                related_comment = "Imported job"
+            except  AssertionError as error:
+                print("ERROR: Invalid job definition in line: %s\n %s" % (line, error))
+#
+def main():
+    ''' main entry point '''
+    acron_command = '/usr/bin/acrontab'
+    acron_opts = '-l'
+    args = getargs()
+    if args.filename is not None:
+        with open(args.filename, 'r') as acrontab:
+            inputs = str(acrontab.read()).splitlines()
+    else:
+        # run acrontab and write the contents into a temporary file
+        if os.path.exists(acron_command):
+            with Popen("%s %s" % (acron_command, acron_opts), stdout=PIPE, shell=True) as acrontab:
+                inputs = acrontab.stdout.readlines()
+        else:
+            print("(!)%s\n%s" %
+                  ("Please run this command either on a node where the legacy client tools are installed,", #pylint: disable=line-too-long
+                   "or dump your acrontab entries into a file and use that as input for this script.")) #pylint: disable=line-too-long
+            sys.exit(0)
+    read_acrontab(inputs)
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,25 @@
+.\" Manpage for acrontab2acron.
+.\" Contact acron-devs@cern.ch to report errors or typos.
+.TH ACRON 1 "27/02/2020" "Acron 0.10.2" "Acron Manual"
+.SH NAME
+acrontab2acron \- Authenticated cron migration tool
+.SH SYNOPSIS
+acrontab2acron [-h] [-f <filename>]
+.SH DESCRIPTION
+This tool parses an existing acrontab, either stored in a file, or by running "acrontab -l", and gives suggestions on how to migrate the existing jobs to the new tool.
+It will not actually do the job but only suggest lines to be run by the user. Therefore, running this tool is rather safe.
+
+.SH OPTIONS
+.TP 4
+-h, --help
+Print a short help message.
+.TP 4
+-f, --filename
+The location of the acrontab file to be read. If this options is not given, the output of the command "acrontab -l" will be used. 
+
+.SH SEE ALSO
+acron-jobs(1), acron-creds(1)
+.SH BUGS
+No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
+.SH AUTHOR
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)

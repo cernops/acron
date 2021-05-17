@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+#
+# (C) Copyright 2019-2020 CERN
+#
+# This  software  is  distributed  under  the  terms  of  the  GNU  General  Public  Licence  version  3
+# (GPL  Version 3), copied verbatim in the file "COPYING" /copied verbatim below.
+#
+# In applying this licence, CERN does not waive the privileges and immunities granted to it
+# by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+#
+'''Acron failover utility for Rundeck backend'''
+
+import argparse
+import logging
+import os
+import socket
+import sys
+import syslog
+import pkg_resources
+import requests
+import yaml
+from acron.errors import ERRORS
+from acron.exceptions import SchedulerError
+from acron.server.backend.scheduler.rundeck import Rundeck
+
+with open('/etc/acron/server.config', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+with open(os.path.join(config['SCHEDULER']['CONFIG'], 'rundeck.config'), 'r') as config_file:
+    config['SCHEDULER'].update(yaml.safe_load(config_file))
+with open(os.path.join(config['SCHEDULER']['CONFIG'], 'rundeck/health_check.config'), 'r') as config_file:
+    config['SCHEDULER'].update(yaml.safe_load(config_file))
+
+__author__ = 'Philippe Ganz (CERN)'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
+__maintainer__ = 'Philippe Ganz (CERN)'
+__email__ = 'philippe.ganz@cern.ch'
+__status__ = 'Development'
+
+
+def log_check(level, message):
+    '''
+    Logs the execution summary of the ssh run.
+
+    :param message: Message line to log
+    :param level:   The level of the log message
+    '''
+    logging.basicConfig(filename=config['SCHEDULER']['HEALTH_CHECK_LOG_FILE'], level='INFO',
+                        format='%(asctime)s %(levelname)-8s  %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.log(level, message)
+    syslog.syslog(message)
+
+
+def check_other_hosts_alive(hosts):
+    '''
+    Launches a heart beat check on all the hosts
+
+    :param hosts: list of hosts to check
+    '''
+    for host in hosts:
+        sys.stdout.write('Checking host ' + host + '...\n')
+        try:
+            response = requests.get('https://' + hosts[host]['URL'] + '/system/info')
+            if response.status_code == 200:
+                sys.stdout.write('Host ' + host + ' reported OK.\n')
+                log_check(logging.INFO, f'Host {host} reported OK.')
+                hosts[host]['Status'] = True
+            else:
+                if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
+                        'message' in response.json().keys()):
+                    sys.stderr.write(response.json()['message'] + '\n')
+                    log_check(logging.WARNING, f'Host {host} reported KO! ' + response.json()['message'])
+                else:
+                    sys.stderr.write(response.content)
+                    log_check(logging.WARNING, f'Host {host} reported KO! ' + response.content)
+                sys.stdout.write('Host ' + host + ' reported KO!\n')
+                hosts[host]['Status'] = False
+        except (OSError, ConnectionError) as error:
+            log_check(logging.WARNING, f'Host {host} reported KO! ' + str(error))
+            sys.stdout.write('Host ' + host + ' reported KO!\n')
+            hosts[host]['Status'] = False
+    return hosts
+
+
+def health_check():
+    '''
+    Check for other hosts
+    '''
+    status_code = ERRORS['OK']
+    try:
+        hosts = check_other_hosts_alive(config['SCHEDULER']['SERVER_LIST'])
+        for host in hosts:
+            if not hosts[host]['Status'] and hosts[host]['URL'] != socket.getfqdn():
+                log_check(logging.INFO, f'Taking over jobs from {host}... ')
+                Rundeck.take_over_jobs(hosts[host]['UUID'], config)
+                log_check(logging.INFO, 'successfully taken over all the jobs.')
+    except SchedulerError as error:
+        sys.stderr.write(f'A problem occured with the backend: {error}\n')
+        log_check(logging.ERROR, f'takeover failed! {error}')
+        status_code = ERRORS["BACKEND_ERROR"]
+    return status_code
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='health_check',
+                                     description='Acron project health check utility for Rundeck backend.')
+    parser.add_argument(
+        '-v', '--version', action='version',
+        version=pkg_resources.require('acron')[0].version)
+    args = parser.parse_args()
+
+    sys.exit(health_check())

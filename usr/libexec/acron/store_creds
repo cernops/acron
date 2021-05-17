@@ -1,0 +1,98 @@
+#!/usr/bin/python3
+# pylint: disable=line-too-long
+#
+# (C) Copyright 2019-2020 CERN
+#
+# This  software  is  distributed  under  the  terms  of  the  GNU  General  Public  Licence  version  3
+# (GPL  Version 3), copied verbatim in the file "COPYING" /copied verbatim below.
+#
+# In applying this licence, CERN does not waive the privileges and immunities granted to it
+# by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+#
+'''Acron file backend credentials setter'''
+
+import argparse
+import os
+import shutil
+import sys
+import pkg_resources
+import yaml
+from acron.errors import ERRORS
+from acron.exceptions import GPGError, KlistError, KinitError
+from acron.utils import gpg_decrypt_file, krb_check_keytab, krb_init_keytab
+
+with open('/etc/acron/server.config', 'r') as config_file:
+    CONFIG = yaml.safe_load(config_file)
+with open(os.path.join(CONFIG['CREDS']['CONFIG'], 'file.config'), 'r') as config_file:
+    CONFIG['CREDS'].update(yaml.safe_load(config_file))
+
+__author__ = 'Philippe Ganz (CERN)'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
+__maintainer__ = 'Philippe Ganz (CERN)'
+__email__ = 'philippe.ganz@cern.ch'
+__status__ = 'Development'
+
+
+def store_creds(username, keytab_encrypted):
+    '''
+    Store the credentials on the shared file system.
+
+    :param username:         user to store the credentials for
+    :param keytab_encrypted: location of the source file on the system
+    '''
+    status_code = ERRORS['OK']
+
+    try:
+        keytab = os.path.join(CONFIG['CREDS']['CACHE'], username + '.keytab')
+        if os.path.isfile(keytab):
+            os.remove(keytab)
+        gpg_decrypt_file(keytab_encrypted, keytab, CONFIG['CREDS']['GPG_BINARY_PATH'],
+                         CONFIG['CREDS']['GPG_HOME'], CONFIG['CREDS']['GPG_PASSPHRASE_FILE'])
+        os.chmod(keytab, 0o0640)
+        try:
+            flavor = CONFIG['KRB_CLIENTS_FLAVOR']
+        except KeyError:
+            flavor = 'MIT'
+        realms = krb_check_keytab(keytab, flavor)
+        # check if we can kinit with all realms found in the keytab
+        for realm in realms:
+            cachefile = "/tmp/krb5cc_"+username+"_"+realm
+            krb_init_keytab(keytab, username+'@'+realm, cachefile)
+            os.unlink(cachefile)
+        keytab_encrypted_target = os.path.join(CONFIG['CREDS']['LOCATION'],
+                                               username + '.keytab.gpg')
+        shutil.copyfile(keytab_encrypted, keytab_encrypted_target)
+        os.chmod(keytab_encrypted_target, 0o0600)
+
+    except GPGError as error:
+        sys.stderr.write('File creds storage: GPG decryption failed. ' + str(error) + '\n')
+        status_code = ERRORS['BACKEND_ERROR']
+    except KlistError as error:
+        sys.stderr.write('File creds storage: Kerberos keytab is not in a valid format. ' + str(error) + '\n')
+        status_code = ERRORS['BAD_ARGS']
+    except KinitError as error:
+        sys.stderr.write('File creds storage: Kerberos keytab initialization failed. ' + str(error) + '\n')
+        status_code = ERRORS['BAD_ARGS']
+    except shutil.Error:
+        sys.stderr.write('Source and destination are the same files.' + '\n')
+        status_code = ERRORS['BACKEND_ERROR']
+    except IOError as error:
+        sys.stderr.write('File creds storage: could not copy creds. ' + str(error) + '\n')
+        status_code = ERRORS['BACKEND_ERROR']
+
+    return status_code
+
+
+def main():
+    """ parse arguments and run store the credentials"""
+    parser = argparse.ArgumentParser(prog='get_creds', description='Acron credential getter.')
+    parser.add_argument(
+        '-v', '--version', action='version',
+        version=pkg_resources.require('acron')[0].version)
+    parser.add_argument('username', help='User to store the credentials for.')
+    parser.add_argument('encrypted_keytab', help='Location of the encrypted source keytab.')
+    args = parser.parse_args()
+    return store_creds(args.username, args.encrypted_keytab)
+
+if __name__ == "__main__":
+    sys.exit(main())

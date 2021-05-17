@@ -1,0 +1,82 @@
+module acron_scheduler_rundeck 1.8;
+
+require {
+        type cephfs_t;
+        type cgroup_t;
+        type chkpwd_exec_t;
+        type gpg_exec_t;
+        type httpd_cache_t;
+        type httpd_t;
+        type httpd_tmp_t;
+        type httpd_var_lib_t;
+        type initrc_var_run_t;
+        type mnt_t;
+        type nscd_var_run_t;
+        type security_t;
+        type selinux_config_t;
+        type shadow_t;
+        type ssh_exec_t;
+        type sudo_exec_t;
+        type system_dbusd_t;
+        type systemd_logind_sessions_t;
+        type systemd_logind_t;
+        type tomcat_cache_t;
+        type tomcat_t;
+        type tomcat_tmp_t;
+        type user_tmp_t;
+        type usr_t;
+        type var_lib_t;
+        type var_log_t;
+        class capability { audit_write net_admin sys_resource };
+        class dbus send_msg;
+        class dir { add_name create getattr open read search write };
+        class fifo_file write;
+        class file { append create execute execute_no_trans getattr ioctl lock open read rename unlink write };
+        class netlink_audit_socket { create nlmsg_relay read write };
+        class process { execmem setfscreate setrlimit };
+        class unix_stream_socket connectto;
+}
+
+#============= httpd_t ==============
+allow httpd_t cephfs_t:dir { add_name create write };
+allow httpd_t cephfs_t:file { append create open read write };
+allow httpd_t cgroup_t:file { getattr open read };
+allow httpd_t mnt_t:dir { add_name create getattr open read search write };
+allow httpd_t nscd_var_run_t:file read;
+allow httpd_t self:capability net_admin;
+allow httpd_t self:process execmem;
+allow httpd_t tomcat_cache_t:dir { add_name create write };
+allow httpd_t tomcat_cache_t:file { append create getattr ioctl lock open read unlink write };
+allow httpd_t tomcat_tmp_t:file unlink;
+allow httpd_t var_lib_t:file { execute execute_no_trans };
+allow httpd_t var_log_t:file open;
+
+#============= systemd_logind_t ==============
+allow systemd_logind_t tomcat_t:dbus send_msg;
+
+#============= tomcat_t ==============
+allow tomcat_t cephfs_t:dir { add_name create getattr open read search write };
+allow tomcat_t cephfs_t:file { append create getattr ioctl lock open read unlink write };
+allow tomcat_t chkpwd_exec_t:file { execute execute_no_trans open read };
+allow tomcat_t gpg_exec_t:file { execute execute_no_trans open read };
+allow tomcat_t httpd_cache_t:file { append create getattr ioctl lock open read unlink write };
+allow tomcat_t httpd_tmp_t:file unlink;
+allow tomcat_t httpd_var_lib_t:file { getattr open read };
+allow tomcat_t initrc_var_run_t:file { lock open read };
+allow tomcat_t nscd_var_run_t:file read;
+allow tomcat_t security_t:file read;
+allow tomcat_t self:capability { audit_write net_admin sys_resource };
+allow tomcat_t self:netlink_audit_socket { create nlmsg_relay read write };
+allow tomcat_t self:process { setfscreate setrlimit };
+allow tomcat_t selinux_config_t:file read;
+allow tomcat_t shadow_t:file { getattr open read };
+allow tomcat_t ssh_exec_t:file { execute execute_no_trans open read };
+allow tomcat_t sudo_exec_t:file { execute execute_no_trans getattr open read };
+allow tomcat_t system_dbusd_t:dbus send_msg;
+allow tomcat_t system_dbusd_t:unix_stream_socket connectto;
+allow tomcat_t systemd_logind_sessions_t:fifo_file write;
+allow tomcat_t systemd_logind_t:dbus send_msg;
+allow tomcat_t user_tmp_t:file unlink;
+allow tomcat_t usr_t:dir create;
+allow tomcat_t var_lib_t:file { getattr open read };
+allow tomcat_t var_log_t:file { append create getattr open read rename write };

@@ -1,0 +1,168 @@
+.\" Manpage for acron.
+.\" Contact acron-devs@cern.ch to report errors or typos.
+.TH ACRON-JOBS 1 "27/02/2020" "Acron 0.10.2" "Acron Manual"
+
+.SH NAME
+acron-jobs \- Manage jobs on the server
+
+.SH SYNOPSIS
+acron jobs [-h] <command> [<args>]
+
+.SH DESCRIPTION
+This command acts on jobs on the acron server.
+
+.SH OPTIONS
+.TP 4
+.B -h, --help
+Print a short help message.
+.TP 4
+.B -p --project PROJECT
+The project to manage the jobs from if not current user's project.
+If you want to have your project manageable by a group, please make a request towards the acron service.
+
+.SH COMMANDS
+.B create
+.RS 4
+Create a new job. Naming convention is jobXXXXXX and increments every time a new job is created.
+.PP
+Three arguments are needed to be able to create a job
+.TP 4
+.B -s, --schedule CRON
+The schedule of the job, quoted, crontab format.
+.TP 4
+.B -t --target FQDN
+The node on which the job will be executed.
+.TP 4
+.B -c --command CMD
+The command to launch, quoted.
+.PP
+Optionally you can provide a comment for the job.
+.TP 4
+.B -d, --description DESCR
+A description that will be displayed when the job is shown.
+.RE
+.PP
+.B update
+.RS 4
+Update an existing job. It is currently not possible to create new jobs with a custom name.
+.PP
+Four arguments are needed to be able to update a job
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to update.
+.TP 4
+.B -s, --schedule CRON
+The schedule of the job, quoted, crontab format.
+.TP 4
+.B -t --target FQDN
+The node on which the job will be executed.
+.TP 4
+.B -c --command CMD
+The command to launch, quoted.
+.PP
+Optionally you can update the job's comment.
+.TP 4
+.B -d, --description DESCR
+A description that will be displayed when the job is shown.
+.RE
+.PP
+.B show
+.RS 4
+Show definition of a job.
+.PP
+There are two options here, either show the definition of a single job or see all jobs. By default it lists all jobs. Jobs with a # in front are disabled.
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to show.
+.RE
+.PP
+.B delete
+.RS 4
+Delete a job.
+.PP
+There are two options here, either delete a single job or delete all jobs.
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to delete.
+.TP 4
+.B -a, -all
+Delete all jobs.
+.PP
+.B enable
+.RS 4
+Enable a disabled job.
+.PP
+There are two options here, either enable a single job or enable all jobs.
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to enable.
+.TP 4
+.B -a, -all
+Enable all jobs.
+.RE
+.PP
+.B disable
+.RS 4
+Disable a job without deleting it.
+.PP
+There are two options here, either disable a single job or disable all jobs.
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to disable.
+.TP 4
+.B -a, -all
+Disable all jobs.
+.RE
+.PP
+
+.SH EXIT CODES
+.TP 4
+.B 0
+All good.
+.TP 4
+.B 1
+Bad arguments.
+.TP 4
+.B 2
+Credentials are not valid.
+.TP 4
+.B 3
+Not allowed to access the requested resource.
+.TP 4
+.B 5
+The requested resource could not be found.
+.TP 4
+.B 6
+Unknown issue with the backend.
+.TP 4
+.B 7
+User error, eg wrong format.
+.TP 4
+.B 8
+Aborted operation.
+
+.SH EXAMPLES
+.TP 4
+.B Create a new job asking for the lxplus hostname every hour.
+acron jobs create -s '0 * * * *' -t lxplus -c hostname
+.TP 4
+.B List all the jobs.
+acron jobs show
+.TP 4
+.B Delete a job.
+acron jobs delete -j job000005
+.TP 4
+.B Update an existing job.
+acron jobs update -j job000002 -s '30 * * * *' -t aiadm -c hostname
+.TP 4
+.B Manage a job from another project.
+acron jobs show -p my_other_project
+
+.SH SEE ALSO
+acron(1), acron-creds(1)
+
+.SH BUGS
+No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
+
+.SH AUTHOR
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)

@@ -1,0 +1,16 @@
+---
+description: '__USERNAME__ can read the __USERNAME__ project'
+context:
+  application: rundeck
+for:
+  project:
+    - match:
+        name: '__USERNAME__'
+      allow: read
+  project_acl:
+    - match:
+        name: '__USERNAME__'
+      allow: read
+by:
+  username:
+    - '__USERNAME__'

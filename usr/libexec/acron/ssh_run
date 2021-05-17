@@ -1,0 +1,258 @@
+#!/usr/bin/python3
+# pylint: disable=line-too-long
+#
+# (C) Copyright 2019-2021 CERN
+#
+# This  software  is  distributed  under  the  terms  of  the  GNU  General  Public  Licence  version  3
+# (GPL  Version 3), copied verbatim in the file "COPYING" /copied verbatim below.
+#
+# In applying this licence, CERN does not waive the privileges and immunities granted to it
+# by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+#
+'''Acron SSH launcher'''
+
+import argparse
+import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import logging
+import os
+import smtplib
+from subprocess import Popen, PIPE, STDOUT
+import sys
+import time
+import syslog
+import yaml
+import pkg_resources
+from acron.errors import ERRORS
+from acron.exceptions import CredsError, CredsNoFileError, KinitError, SSHFailureError
+from acron.utils import krb_init_keytab, krb_check_keytab
+
+__author__ = 'Philippe Ganz (CERN)'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
+__maintainer__ = 'Philippe Ganz (CERN)'
+__email__ = 'philippe.ganz@cern.ch'
+__status__ = 'Development'
+
+with open('/etc/acron/server.config', 'r') as config_file:
+    CONFIG = yaml.safe_load(config_file)
+with open(os.path.join(CONFIG['CREDS']['CONFIG'], 'file.config'), 'r') as config_file:
+    CONFIG['CREDS'].update(yaml.safe_load(config_file))
+
+logging.basicConfig(filename=CONFIG['EXECUTIONS_LOG_FILE'], level='INFO',
+                    format='%(asctime)s %(levelname)-8s  %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+def email_user(username, subject, body):
+    '''
+    Send an email to a user
+
+    :param username: name of the user
+    :param subject:  the ubject of the e-mail
+    :param body:     the body of the e-mail
+    '''
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = 'no-reply@{}'.format(CONFIG['DOMAIN'])
+    msg['To'] = '{}@{}'.format(username, CONFIG['DOMAIN'])
+    msg.attach(MIMEText(body))
+    smtp_obj = smtplib.SMTP('localhost')
+    smtp_obj.sendmail(msg['From'], msg['To'], msg.as_string())
+
+
+def init_creds_external_script(username, realm=None):
+    '''
+    Initializes credentials using and external script.
+
+    :param username: name of the user to initialize the credentials for
+    :raises:         CredsError if the external script fails
+    '''
+    process = Popen([CONFIG['CREDS']['FAILOVER_SCRIPT'], username, realm],
+                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
+    _, err = process.communicate()
+    if process.returncode != 0:
+        sys.stderr.write(err)
+        raise CredsError(err)
+
+def get_creds_file(username):
+    ''' unpack and return the credential cache file name
+    :param username: name of the user to initialize the credentials for
+    :returns:        output of the comment
+    :raises:         CredsNoFileError
+    :raises:         CredsError
+    '''
+    process = Popen(['/usr/libexec/acron/get_creds', username],
+                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
+    out, err = process.communicate()
+    if process.returncode != 0:
+        sys.stderr.write(err)
+        if process.returncode == ERRORS['NO_VALID_CREDS']:
+            if CONFIG['CREDS']['ALLOW_NO_KEYTAB'] and CONFIG['CREDS']['FAILOVER_SCRIPT']:
+                init_creds_external_script(username)
+            else:
+                raise CredsNoFileError(err)
+        else:
+            raise CredsError(err)
+    return out
+
+def init_creds(username, target):
+    '''
+    Get the user's credentials and get a Kerberos ticket.
+
+    :param username: name of the user to initialize the credentials for
+    :raises:         CredsNoFileError if credentials are not found
+    :raises:         CredsError if GPG decryption fails
+    '''
+    try:
+        flavor = CONFIG['KRB_CLIENTS_FLAVOR']
+    except KeyError:
+        flavor = 'MIT'
+    if CONFIG['CREDS']['ALLOW_NO_KEYTAB'] and CONFIG['CREDS']['FAILOVER_SCRIPT']:
+        init_creds_external_script(username)
+        return None
+    try:
+        keytab_file = get_creds_file(username)
+        realms = krb_check_keytab(keytab_file, flavor)
+        if len(realms) > 1:
+            # check if we can kinit with all realms found in the keytab
+            for realm in realms:
+                try:
+                    krb_init_keytab(keytab_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
+                    launch_command(username, realm, target, '/bin/true', retries=1, log=False)
+                    logging.info("Connection test succeeded for realm %s", realm)
+                    return realm
+                except (KinitError, SSHFailureError) as error:
+                    pass
+            return None
+        else:
+            realm = realms[0]
+            krb_init_keytab(keytab_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
+            return realm
+    except CredsNoFileError as error:
+        logging.error(error)
+        raise CredsNoFileError(error)
+    except (CredsError) as error:
+        logging.error(error)
+        raise CredsError(error)
+
+def log_execution(username, target, command, duration, return_code):
+    '''
+    Logs the execution summary of the ssh run.
+
+    :param username:    Name of the running user
+    :param target:      Target of the ssh command
+    :param command:     Command to launch on the target
+    :param duration:    The execution time
+    :param return_code: The return code of the ssh call
+    '''
+    message = f'{username} @ {target} returned {return_code} after {duration} seconds. Command: {command}'
+    logging.info(message)
+    syslog.syslog(message)
+
+def launch_command(username, realm, target, command, retries=3, log=True):#pylint: disable=too-many-arguments
+    '''
+    Launch an ssh connection in name of the user.
+
+    :param username: Name of the running user
+    :param target:   Target of the ssh command
+    :param command:  Command to launch on the target
+    :retries:        Number of retries, defaults to 3
+    :log:            Log the attempts or not
+    :raises:         SSHFailureError if the ssh connection failed
+    '''
+    cachefile = "/tmp/krb5cc_"+username+"_"+realm
+    logging.info("Launch command for user %s using %s in realm %s", username, cachefile, realm)
+    # setup environment for ssh call
+    execenv = os.environ.copy()
+    execenv["KRB5CCNAME"] = cachefile
+    try:
+        timeout = CONFIG['IDLE_TIMEOUT']
+        execenv["TMOUT"] = str(timeout)
+        execenv["autologout"] = str(int(timeout/60))
+    except KeyError:
+        pass
+    retc = 1
+    attempt = 0
+    while (retc != 0) and (attempt < retries):
+        attempt += 1
+        process = Popen(['/usr/bin/ssh',
+                         '-o', 'UserKnownHostsFile=/dev/null',
+                         '-o', 'StrictHostKeyChecking=no',
+                         '-o', 'LogLevel=error',
+                         '-o', 'GSSAPIDelegateCredentials=yes',
+                         '-o', 'BatchMode=yes',
+                         username + '@' + target, command],
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=STDOUT,
+                        env=execenv)
+        out, _ = process.communicate()
+        if log:
+            sys.stdout.write(out + '\n')
+        retc = process.returncode
+        if retc != 0 and attempt < retries:
+            logging.info("Connection to %s failed. Retrying in 5s", target)
+            time.sleep(5)
+    if retc != 0:
+        raise SSHFailureError(process.returncode, out)
+    return out
+
+def run_ssh(job_id, username, target, command):
+    '''
+    Get Kerberos ticket for the user and launched the command on the target.
+
+    :param job_id:   Name of the job to run
+    :param username: Name of the running user
+    :param target:   Target of the ssh command
+    :param command:  Command to launch on the target
+    '''
+    status_code = ERRORS['OK']
+    start = time.time()
+    realm = init_creds(username, target)
+    if realm is not None:
+        try:
+            output = launch_command(username, realm, target, command)
+        except (CredsNoFileError, KinitError) as error:
+            status_code = ERRORS['NO_VALID_CREDS']
+            message = str(error)
+        except CredsError as error:
+            status_code = ERRORS['BACKEND_ERROR']
+            message = str(error)
+        except SSHFailureError as error:
+            status_code = ERRORS['SSH_ERROR']
+            message = str(error)
+        log_execution(username, target, command, time.time() - start, status_code)
+        if status_code != ERRORS['OK']:
+            if	status_code == ERRORS['SSH_ERROR']:
+                email_user(username,
+                           'Acron job ' + job_id + ' on ' + target + ' at ' + str(datetime.datetime.now()),
+                           job_id + ': ' + username + '@' + target + ' ' + command + '\n' + 'returned 0' +
+                           ', failed to connect to target ' + target)
+            else:
+                email_user(username,
+                           'Acron job ' + job_id + ' failed on ' + target + ' at ' + str(datetime.datetime.now()),
+                           job_id + ': ' + username + '@' + target + ' ' + command + '\n' +
+                           'returned ' + str(status_code) + ', producing following output:' + '\n\n' + message)
+        elif output != '':
+            email_user(username,
+                       'Acron job ' + job_id + ' on ' + target + ' at ' + str(datetime.datetime.now()),
+                       job_id + ': ' + username + '@' + target + ' ' + command + '\n' + 'returned 0' +
+                       ', producing following output:' + '\n\n' + output)
+
+    return status_code
+
+def main():
+    """ parse arguments and run ssh command"""
+    parser = argparse.ArgumentParser(prog='get_creds', description='Acron ssh launcher.')
+    parser.add_argument(
+        '-v', '--version', action='version',
+        version=pkg_resources.require('acron')[0].version)
+    parser.add_argument('job_id', help='Name of the job to launch.')
+    parser.add_argument('username', help='User to launch the command for.')
+    parser.add_argument('target', help='Hostname of the executing node.')
+    parser.add_argument('command', help='Command to execute on the target.')
+    args = parser.parse_args()
+    return run_ssh(args.job_id, args.username, args.target, args.command)
+
+if __name__ == "__main__":
+    sys.exit(main())

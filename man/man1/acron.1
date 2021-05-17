@@ -1,0 +1,40 @@
+.\" Manpage for acron.
+.\" Contact acron-devs@cern.ch to report errors or typos.
+.TH ACRON 1 "27/02/2020" "Acron 0.10.2" "Acron Manual"
+.SH NAME
+acron \- Authenticated cron management tool
+.SH SYNOPSIS
+acron [-h] [-v] <command> [<args>]
+.SH DESCRIPTION
+The authenticated cron service offers a centralized crontab service for scheduled tasks that need kerberos credentials. For example, at any given time
+.IP
+* copy local files to a shared file system requiering authentication
+.IP
+* renew a kerberos ticket on a machine
+.IP
+* launch any command requiring authentication
+
+.SH OPTIONS
+.TP 4
+-v, --version
+Print the version of the program.
+.TP 4
+-h, --help
+Print a short help message.
+
+.SH COMMANDS
+.TP 4
+acron-creds(1)
+Credentials management subcommand.
+Used to create, upload and delete keytabs on the server.
+.TP 4
+acron-jobs(1)
+Jobs management subcommand.
+Used to create, update, view, delete, disable and enable jobs on the server.
+
+.SH SEE ALSO
+acron-jobs(1), acron-creds(1)
+.SH BUGS
+No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
+.SH AUTHOR
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)

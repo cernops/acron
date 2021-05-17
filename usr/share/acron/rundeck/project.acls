@@ -1,0 +1,25 @@
+---
+description: '__USERNAME__ is allowed to manage the __USERNAME__ project'
+for:
+  resource:
+    - equals:
+        kind: node
+      allow:
+        - read
+        - update
+    - equals:
+        kind: event
+      allow:
+        - read
+  job:
+    - allow:
+        - read
+        - run
+        - toggle_schedule
+  node:
+    - allow:
+        - read
+        - run
+by:
+  username:
+    - '__USERNAME__'

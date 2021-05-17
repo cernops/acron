@@ -1,0 +1,30 @@
+- defaultTab: output
+  description: '__DESCRIPTION__'
+  executionEnabled: true
+  id: __PROJECT_NAME__-__JOB_NAME__
+  uuid: __PROJECT_NAME__-__JOB_NAME__
+  loglevel: INFO
+  loglimit: 1MB
+  loglimitAction: halt
+  loglimitStatus: failed
+  multipleExecutions: true
+  name: __JOB_NAME__
+  nodeFilterEditable: false
+  nodefilters:
+    dispatch:
+      excludePrecedence: true
+      keepgoing: false
+      rankOrder: ascending
+      successOnEmptyNodeFilter: false
+      threadcount: '1'
+    filter: 'name: __TARGET_HOST__'
+  nodesSelectedByDefault: true
+  schedule:
+    crontab: '__CRONTAB__'
+  scheduleEnabled: true
+  sequence:
+    commands:
+    - exec: '__COMMAND__'
+    keepgoing: false
+    strategy: node-first
+  timeout: 1h

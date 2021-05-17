@@ -1,0 +1,15 @@
+name: acron-node-executor
+rundeckPluginVersion: 1.2
+author: Philippe Ganz
+date: 2019-07-30
+version: 2.0.0
+url: 'https://gitlab.cern.ch/acron-devs/acron'
+providers:
+  - name: ssh-acron
+    service: NodeExecutor
+    title: SSH Acron Executor
+    description: Execute a command on a remote node using SSH, authenticating using the Acron service
+    plugin-type: script
+    script-interpreter: /bin/bash
+    script-file: ssh-acron.sh
+    script-args: ${job.name} ${node.username} ${node.hostname} ${exec.command}
