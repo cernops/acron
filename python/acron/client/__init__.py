@@ -212,7 +212,7 @@ def input_parser():
     return main_parser.parse_args()
 
 def sanity_checks(args):
-    """ perfmon sanity checks on given inputs """
+    """ perform sanity checks on given inputs """
     if "schedule" in args and args.schedule is not None:
         try:
             check_schedule(args.schedule)
