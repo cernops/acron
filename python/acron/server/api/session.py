@@ -18,7 +18,7 @@ from flask_login import login_user, UserMixin, logout_user
 from acron.server.utils import dump_args
 
 __author__ = 'Ulrich Schwickerath (CERN)'
-__credits__ = ['Ulrich Schwickerath (CERN)', 'Ulrich Schwickerath (CERN)']
+__credits__ = ['Ulrich Schwickerath (CERN)']
 __maintainer__ = 'Ulrich Schwickerath (CERN)'
 __email__ = 'ulrich.schwickerath@cern.ch'
 __status__ = 'Development'
