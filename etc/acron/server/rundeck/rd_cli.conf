@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 #
 # (C) Copyright 2019-2020 CERN
 #
