@@ -266,7 +266,7 @@ def check_shared_project_access(user, project, scheduler_class):
 @dump_args
 def setup_scheduler():
     '''
-    Instanciate the Scheduler class based on the config.
+    Instantiate the Scheduler class based on the config.
 
     :returns: a Scheduler instance
     '''

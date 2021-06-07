@@ -134,7 +134,7 @@ def delete_creds(creds_storage):
 @dump_args
 def setup_creds_storage():
     '''
-    Instanciate the Creds class based on the config.
+    Instantiate the Creds class based on the config.
 
     :returns: a Creds instance
     '''
