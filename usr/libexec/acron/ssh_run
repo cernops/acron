@@ -65,6 +65,7 @@ def init_creds_external_script(username, realm=None):
     Initializes credentials using and external script.
 
     :param username: name of the user to initialize the credentials for
+    :param realm:    authentication domain
     :raises:         CredsError if the external script fails
     '''
     process = Popen([CONFIG['CREDS']['FAILOVER_SCRIPT'], username, realm],
@@ -100,6 +101,7 @@ def init_creds(username, target):
     Get the user's credentials and get a Kerberos ticket.
 
     :param username: name of the user to initialize the credentials for
+    :param target:   hostname of the executing node
     :raises:         CredsNoFileError if credentials are not found
     :raises:         CredsError if GPG decryption fails
     '''
