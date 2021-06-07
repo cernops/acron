@@ -123,7 +123,7 @@ def find_salt_mit(user, realm, password):
     Find the salt for a principal and return it
 
     :param user:     the name of the user
-    :param realm:   realm for the username
+    :param realm:    realm for the username
     :password:       the users password
     :output:         the salt or None
     '''
