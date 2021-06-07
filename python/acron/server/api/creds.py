@@ -44,8 +44,8 @@ def update_creds(creds_storage):
     status_code = ERRORS['OK']
 
     try:
-        if 'keytab' not in request.files:
-            raise ArgsMissingError('User did not provide a keytab')
+        if 'creds' not in request.files:
+            raise ArgsMissingError('User did not provide a credentials file')
 
         temp_dir = mkdtemp()
         os.chmod(temp_dir, 0o0755)
@@ -53,7 +53,7 @@ def update_creds(creds_storage):
         keytab_encrypted = open(keytab_encrypted_path, 'wb+')
         os.chmod(keytab_encrypted_path, 0o0644)
 
-        file_uploaded = request.files['keytab']
+        file_uploaded = request.files['creds']
         if not file_uploaded or file_uploaded.filename == '':
             raise ArgsMalformedError('User provided an empty keytab')
         file_uploaded.save(keytab_encrypted)
