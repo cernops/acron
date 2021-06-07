@@ -148,7 +148,7 @@ def creds_put(parser_args):
                 sys.stderr.write('The file ' + parser_args.file + ' does not exist!\n')
                 sys.stderr.write('Please verify your entry and try again.')
                 raise ValueError
-            keytab = parser_args.file
+            creds_file = parser_args.file
         elif parser_args.generate:
             sys.stdout.write('Where do you want to save the keytab on disk ')
             sys.stdout.write('(press Enter to confirm or enter new path)?\n')
@@ -156,17 +156,17 @@ def creds_put(parser_args):
             default_path += "/" + username + '.keytab'
             answer = input('(' + default_path + ') ')
             if answer == '':
-                keytab = default_path
+                creds_file = default_path
             else:
-                keytab = answer
-            if not os.path.isdir(os.path.abspath(os.path.join(keytab, os.pardir))):
+                creds_file = answer
+            if not os.path.isdir(os.path.abspath(os.path.join(creds_file, os.pardir))):
                 sys.stderr.write('Parent folder does not exist, please create it first.\n')
                 raise AbortError
-            if os.path.isfile(keytab):
+            if os.path.isfile(creds_file):
                 sys.stdout.write('A file with the same name already exists. ')
                 answer = input('Replace it? [y/N] ')
                 if answer in ['y', 'yes']:
-                    os.remove(keytab)
+                    os.remove(creds_file)
                 elif answer in ['n', 'no', '']:
                     sys.stderr.write('OK, so we will add credentials to the existing keytab file...\n')#pylint: disable=line-too-long
                 else:
@@ -180,11 +180,11 @@ def creds_put(parser_args):
                 realms.append(CONFIG['DOMAIN'].upper())
             for realm in realms:
                 sys.stderr.write('Generating keytab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
-                keytab_generator(username, realm, CONFIG['KEYTAB_ENCRYPTION_TYPES'], keytab,
+                keytab_generator(username, realm, CONFIG['KEYTAB_ENCRYPTION_TYPES'], creds_file,
                                  flavor=CONFIG['KRB_CLIENTS_FLAVOR'],
                                  script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)#pylint: disable=line-too-long
-            sys.stdout.write('Keytab successfully created at ' + os.path.expanduser(keytab) + '\n')
-        krb_init_keytab(keytab, username)
+            sys.stdout.write('Keytab successfully created at ' + os.path.expanduser(creds_file) + '\n')
+        krb_init_keytab(creds_file, username)
         sys.stdout.write(' +=====+ ' + 'Your keytab is ready to be sent to the Acron server. \n')#pylint: disable=line-too-long
         sys.stdout.write(' |  I  | ' + 'Please be aware that you are delegating your credentials \n')#pylint: disable=line-too-long
         sys.stdout.write(' |  I  | ' + 'to the Acron service. By doing so, you authorize the \n')#pylint: disable=line-too-long
@@ -216,7 +216,7 @@ def creds_put(parser_args):
         temp_dir = mkdtemp()
         keytab_encrypted = os.path.join(temp_dir, 'keytab.gpg')
         sys.stdout.write('Encrypting the keytab... ')
-        gpg_encrypt_file(keytab, keytab_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
+        gpg_encrypt_file(creds_file, keytab_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
         sys.stdout.write('Keytab successfully encrypted\n')
         files = {'keytab': open(keytab_encrypted, 'rb')}
         sys.stdout.write('Sending the keytab to the server...\n')
