@@ -62,13 +62,13 @@ def input_parser():
     # acron creds upload [--file FILE|--generate] [--help]
     creds_update_parser = creds_subparsers.add_parser(
         'upload',
-        help='upload new credentials, either existing (--file) or generated on the fly (--generate)',
+        help='upload new credentials, either existing keytab or private SSH key (--file) or generated keytab on the fly (--generate)',
         description='Acron credentials upload utility.',
         epilog='More information in the man page acron-creds(1).')
     creds_update_parser.set_defaults(func=creds_put)
     creds_update_parser_type = creds_update_parser.add_mutually_exclusive_group(required=True)
     creds_update_parser_type.add_argument(
-        '-f', '--file', metavar='FILE', help='Path to the keytab to upload.')
+        '-f', '--file', metavar='FILE', help='Path to the keytab or private SSH key to upload.')
     creds_update_parser_type.add_argument(
         '-g', '--generate', action='store_true', help='Generate the keytab.')
 
