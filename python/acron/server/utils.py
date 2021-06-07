@@ -119,9 +119,9 @@ def get_remote_hostname():
 @dump_args
 def default_log_line_request():
     '''
-    Generates a formated string for logging on requests.
+    Generates a formatted string for logging on requests.
 
-    :returns: a formated string
+    :returns: a formatted string
     '''
     return 'User {username} ({host}) requests {method}'.format(
         username=request.remote_user, host=get_remote_hostname(), method=request.method)

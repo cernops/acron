@@ -61,7 +61,7 @@ def update_creds(creds_storage):
         keytab_encrypted.close()
         if (os.stat(keytab_encrypted_path).st_size > current_app.config['CREDS']['KEYTAB_MAX_LENGTH'] or
                 os.stat(keytab_encrypted_path).st_size == 0):
-            raise ArgsMalformedError('User provided a wrongly formated keytab')
+            raise ArgsMalformedError('User provided a wrongly formatted keytab')
 
         creds_storage.update_creds(keytab_encrypted_path)
 
