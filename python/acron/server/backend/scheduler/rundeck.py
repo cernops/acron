@@ -32,7 +32,7 @@ def _cron2quartz(schedule):
     fields = re.split(r'\s+', schedule)
     if fields[2] == '*':
         if fields[4] == '*':
-            # flaw: if both all monthdays and all weekdays are specified, weekday should be ?
+            # flaw: if both all monthdays and all weekdays are specified, weekday should be?
             fields[4] = '?'
         else:
             if fields[4] != '?':

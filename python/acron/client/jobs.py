@@ -71,7 +71,7 @@ def jobs_delete(parser_args):
         valid_answers = ['y', 'yes', 'n', 'no', '']
         answer = 'not valid'
         while answer not in valid_answers:
-            answer = input('Are you sure you want to delete ? [y/N] ')
+            answer = input('Are you sure you want to delete? [y/N] ')
             if answer.lower() in ['y', 'yes']:
                 pass
             elif answer.lower() in ['n', 'no', '']:
