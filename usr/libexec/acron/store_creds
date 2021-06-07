@@ -60,7 +60,7 @@ def store_creds(username, keytab_encrypted):
             krb_init_keytab(keytab, username+'@'+realm, cachefile)
             os.unlink(cachefile)
         keytab_encrypted_target = os.path.join(CONFIG['CREDS']['LOCATION'],
-                                               username + '.keytab.gpg')
+                                               username + '.creds.gpg')
         shutil.copyfile(keytab_encrypted, keytab_encrypted_target)
         os.chmod(keytab_encrypted_target, 0o0600)
 

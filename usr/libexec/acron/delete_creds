@@ -35,7 +35,7 @@ def delete_creds(username):
 
     :param username: user to delete the credentials for
     '''
-    keytab_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.keytab.gpg')
+    keytab_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.creds.gpg')
     keytab_cached = os.path.join(config['CREDS']['CACHE'], username + '.keytab')
 
     status_code = ERRORS['OK']

@@ -217,7 +217,7 @@ def creds_put(parser_args):
                     raise AbortError
 
         temp_dir = mkdtemp()
-        creds_file_encrypted = os.path.join(temp_dir, 'keytab.gpg')
+        creds_file_encrypted = os.path.join(temp_dir, 'creds.gpg')
         sys.stdout.write('Encrypting credentials file... ')
         gpg_encrypt_file(creds_file, creds_file_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
         sys.stdout.write('Credentials file successfully encrypted\n')
