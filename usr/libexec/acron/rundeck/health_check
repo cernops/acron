@@ -95,7 +95,7 @@ def health_check():
                 Rundeck.take_over_jobs(hosts[host]['UUID'], config)
                 log_check(logging.INFO, 'successfully taken over all the jobs.')
     except SchedulerError as error:
-        sys.stderr.write(f'A problem occured with the backend: {error}\n')
+        sys.stderr.write(f'A problem occurred with the backend: {error}\n')
         log_check(logging.ERROR, f'takeover failed! {error}')
         status_code = ERRORS["BACKEND_ERROR"]
     return status_code

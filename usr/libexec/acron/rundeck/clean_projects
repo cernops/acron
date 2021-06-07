@@ -46,7 +46,7 @@ def clean_projects():
             Rundeck.delete_project(project, config)
 
     except SchedulerError:
-        sys.stderr.write("A problem occured with the backend.")
+        sys.stderr.write("A problem occurred with the backend.")
         status_code = ERRORS["BACKEND_ERROR"]
     return status_code
 

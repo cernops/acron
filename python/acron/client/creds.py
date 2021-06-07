@@ -49,11 +49,11 @@ def error_creds_expired():
 
 def error_unknown(message):
     '''
-    Error message when an unknown error occured.
+    Error message when an unknown error occurred.
 
     :param message: raw message returned by the server
     '''
-    sys.stderr.write('An unknown error occured, please try again or ')
+    sys.stderr.write('An unknown error occurred, please try again or ')
     sys.stderr.write('contact the support with the following information:\n')
     sys.stderr.write(message)
 
@@ -273,6 +273,6 @@ def creds_put(parser_args):
         try:
             rmtree(temp_dir)
         except NameError:
-            pass # exception occured before temp_dir was assigned
+            pass # exception occurred before temp_dir was assigned
 
     return return_code

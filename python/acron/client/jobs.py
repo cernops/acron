@@ -48,11 +48,11 @@ def error_project_not_found():
 
 def error_unknown(message):
     '''
-    Error message when an unknown error occured.
+    Error message when an unknown error occurred.
 
     :param message: raw message returned by the server
     '''
-    sys.stderr.write('An unknown error occured, please try again or ')
+    sys.stderr.write('An unknown error occurred, please try again or ')
     sys.stderr.write('contact the support with the following information:\n')
     sys.stderr.write(message + '\n')
 
