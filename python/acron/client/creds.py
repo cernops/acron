@@ -179,7 +179,7 @@ def creds_put(parser_args):
             else:
                 realms.append(CONFIG['DOMAIN'].upper())
             for realm in realms:
-                sys.stderr.write('Generating ketyab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
+                sys.stderr.write('Generating keytab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
                 keytab_generator(username, realm, CONFIG['KEYTAB_ENCRYPTION_TYPES'], keytab,
                                  flavor=CONFIG['KRB_CLIENTS_FLAVOR'],
                                  script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)#pylint: disable=line-too-long
