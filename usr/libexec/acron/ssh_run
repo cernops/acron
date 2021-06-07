@@ -113,13 +113,13 @@ def init_creds(username, target):
         init_creds_external_script(username)
         return None
     try:
-        keytab_file = get_creds_file(username)
-        realms = krb_check_keytab(keytab_file, flavor)
+        creds_file = get_creds_file(username)
+        realms = krb_check_keytab(creds_file, flavor)
         if len(realms) > 1:
             # check if we can kinit with all realms found in the keytab
             for realm in realms:
                 try:
-                    krb_init_keytab(keytab_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
+                    krb_init_keytab(creds_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
                     launch_command(username, realm, target, '/bin/true', retries=1, log=False)
                     logging.info("Connection test succeeded for realm %s", realm)
                     return realm
@@ -128,7 +128,7 @@ def init_creds(username, target):
             return None
         else:
             realm = realms[0]
-            krb_init_keytab(keytab_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
+            krb_init_keytab(creds_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
             return realm
     except CredsNoFileError as error:
         logging.error(error)

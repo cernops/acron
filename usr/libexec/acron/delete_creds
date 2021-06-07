@@ -35,22 +35,22 @@ def delete_creds(username):
 
     :param username: user to delete the credentials for
     '''
-    keytab_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.creds.gpg')
-    keytab_cached = os.path.join(config['CREDS']['CACHE'], username + '.keytab')
+    creds_file_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.creds.gpg')
+    creds_file_cached = os.path.join(config['CREDS']['CACHE'], username + '.keytab')
 
     status_code = ERRORS['OK']
 
     try:
-        os.remove(keytab_cached)
+        os.remove(creds_file_cached)
     except FileNotFoundError:
         pass
 
-    if not os.path.exists(keytab_encrypted):
+    if not os.path.exists(creds_file_encrypted):
         sys.stderr.write('File creds storage: no credentials found to delete.')
         status_code = ERRORS['NOT_FOUND']
     else:
         try:
-            os.remove(keytab_encrypted)
+            os.remove(creds_file_encrypted)
         except OSError as error:
             sys.stderr.write('File creds storage: could not delete creds. ' + str(error) + '\n')
             status_code = ERRORS['BACKEND_ERROR']
