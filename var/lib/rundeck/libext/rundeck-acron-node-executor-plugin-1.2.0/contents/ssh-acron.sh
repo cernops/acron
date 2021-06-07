@@ -16,6 +16,10 @@
 # __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 # __status__ = 'Development'
 
+set -o errexit
+set -o pipefail
+set -o nounset
+
 if [ $# -lt 4 ]; then
   echo "Script requires 4 parameters in the following order: job_id, username, hostname, command" >&2
   exit 1
