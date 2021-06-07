@@ -168,7 +168,7 @@ def creds_put(parser_args):
                 if answer in ['y', 'yes']:
                     os.remove(keytab)
                 elif answer in ['n', 'no', '']:
-                    sys.stderr.write('OK, so we will add credentials to the exiting keytab file...\n')#pylint: disable=line-too-long
+                    sys.stderr.write('OK, so we will add credentials to the existing keytab file...\n')#pylint: disable=line-too-long
                 else:
                     sys.stderr.write('Please provide a valid answer.\n')
                     raise ValueError
