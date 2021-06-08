@@ -111,7 +111,7 @@ class ProjectNotFoundError(NotFoundError):
     The project was not found in the backend.
     '''
 
-class NotSharableError(SchedulerError):
+class NotShareableError(SchedulerError):
     '''
     Project can not be shared with other users.
     '''
