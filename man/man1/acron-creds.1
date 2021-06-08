@@ -20,12 +20,12 @@ Print a short help message.
 .SH COMMANDS
 .B upload
 .RS 4
-Upload a new keytab to the server.
+Upload a new credentials file to the server.
 .PP
-Two options are available to upload new credentials, either by specifying the path to the keytab or to automatically generate a new one.
+Two options are available to upload new credentials, either by specifying the path to the credentials file or to automatically generate a keytab.
 .TP 4
 .B -f, --file FILE
-Path to the keytab to upload.
+Path to the credentials file to upload.
 .TP 4
 .B -g, --generate
 Generate a new keytab for the current user.
@@ -33,12 +33,12 @@ Generate a new keytab for the current user.
 .PP
 .B status
 .RS 4
-Get the status of the credentials on the server. Does NOT download the keytab.
+Get the status of the credentials on the server. Does NOT download the credentials file.
 .RE
 .PP
 .B delete
 .RS 4
-Delete the keytab from the server.
+Delete the credentials file from the server.
 .RE
 
 .SH EXIT CODES
@@ -85,4 +85,4 @@ acron(1), acron-jobs(1)
 No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
 
 .SH AUTHOR
-Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch), Rodrigo Bermudez Schettino (rodrigo.bermudez.schettino@cern.ch)

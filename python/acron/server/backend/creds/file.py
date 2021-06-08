@@ -17,9 +17,9 @@ from acron.server.utils import dump_args
 from . import Creds
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -33,7 +33,7 @@ class File(Creds):
         Create or replace existing encrypted credentials.
 
         :param source_path:         location of the file on the system
-        :except ArgsMalformedError: if the keytab is not valid
+        :except ArgsMalformedError: if the credentials file is not valid
         :except FileError:          on backend failure
         '''
         process = Popen(['sudo', '-u', 'acron', '/usr/libexec/acron/store_creds',

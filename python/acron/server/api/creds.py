@@ -45,25 +45,25 @@ def update_creds(creds_storage):
 
     try:
         if 'keytab' not in request.files:
-            raise ArgsMissingError('User did not provide a keytab')
+            raise ArgsMissingError('User did not provide a credentials file')
 
         temp_dir = mkdtemp()
         os.chmod(temp_dir, 0o0755)
-        keytab_encrypted_path = os.path.join(temp_dir, 'keytab.gpg')
-        keytab_encrypted = open(keytab_encrypted_path, 'wb+')
-        os.chmod(keytab_encrypted_path, 0o0644)
+        creds_encrypted_path = os.path.join(temp_dir, 'keytab.gpg')
+        creds_encrypted = open(creds_encrypted_path, 'wb+')
+        os.chmod(creds_encrypted_path, 0o0644)
 
         file_uploaded = request.files['keytab']
         if not file_uploaded or file_uploaded.filename == '':
-            raise ArgsMalformedError('User provided an empty keytab')
-        file_uploaded.save(keytab_encrypted)
+            raise ArgsMalformedError('User provided an empty creds file')
+        file_uploaded.save(creds_encrypted)
         file_uploaded.close()
-        keytab_encrypted.close()
-        if (os.stat(keytab_encrypted_path).st_size > current_app.config['CREDS']['KEYTAB_MAX_LENGTH'] or
-                os.stat(keytab_encrypted_path).st_size == 0):
-            raise ArgsMalformedError('User provided a wrongly formatted keytab')
+        creds_encrypted.close()
+        if (os.stat(creds_encrypted_path).st_size > current_app.config['CREDS']['KEYTAB_MAX_LENGTH'] or
+                os.stat(creds_encrypted_path).st_size == 0):
+            raise ArgsMalformedError('User provided a wrongly formated creds file')
 
-        creds_storage.update_creds(keytab_encrypted_path)
+        creds_storage.update_creds(creds_encrypted_path)
 
     except (ArgsMissingError, ArgsMalformedError) as error:
         logging.warning('%s on /creds/: %s', default_log_line_request(), error)
