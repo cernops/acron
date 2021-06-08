@@ -33,7 +33,7 @@ class File(Creds):
         Create or replace existing encrypted credentials.
 
         :param source_path:         location of the file on the system
-        :except ArgsMalformedError: if the keytab is not valid
+        :except ArgsMalformedError: if the credentials file is not valid
         :except FileError:          on backend failure
         '''
         process = Popen(['sudo', '-u', 'acron', '/usr/libexec/acron/store_creds',

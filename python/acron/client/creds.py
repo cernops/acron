@@ -258,7 +258,7 @@ def creds_put(parser_args):
         sys.stderr.write('Check if you entered the correct password or retry on a more recent OS.\n')#pylint: disable=line-too-long
         return_code = ERRORS['BAD_ARGS']
     except GPGError as error:
-        sys.stderr.write('Error whilst encyphering your keytab: ' + str(error) + '\n')
+        sys.stderr.write('Error whilst encyphering your credentials file: ' + str(error) + '\n')
         sys.stderr.write('Please try again or raise a ticket towards the Acron\n')
         sys.stderr.write('service if the error persists.\n')
         return_code = ERRORS['BACKEND_ERROR']

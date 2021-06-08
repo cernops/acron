@@ -41,7 +41,7 @@ class Creds(ABC):
         Create or replace existing encrypted credentials.
 
         :param source_path:         location of the file on the system
-        :except ArgsMalformedError: if the keytab is not valid
+        :except ArgsMalformedError: if the credentials file is not valid
         :except CredsError:         on backend failure
         '''
 

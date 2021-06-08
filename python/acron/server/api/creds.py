@@ -45,7 +45,7 @@ def update_creds(creds_storage):
 
     try:
         if 'keytab' not in request.files:
-            raise ArgsMissingError('User did not provide a keytab')
+            raise ArgsMissingError('User did not provide a credentials file')
 
         temp_dir = mkdtemp()
         os.chmod(temp_dir, 0o0755)

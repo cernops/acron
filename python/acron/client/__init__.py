@@ -68,7 +68,7 @@ def input_parser():
     creds_update_parser.set_defaults(func=creds_put)
     creds_update_parser_type = creds_update_parser.add_mutually_exclusive_group(required=True)
     creds_update_parser_type.add_argument(
-        '-f', '--file', metavar='FILE', help='Path to the keytab to upload.')
+        '-f', '--file', metavar='FILE', help='Path to the credentials file to upload.')
     creds_update_parser_type.add_argument(
         '-g', '--generate', action='store_true', help='Generate the keytab.')
 
