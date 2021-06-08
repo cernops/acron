@@ -13,7 +13,7 @@ import logging
 import memcache
 
 __author__ = 'Ulrich Schwickerath (CERN)'
-__credits__ = ['Ulrich Schwickerath (CERN)', 'Ulrich Schwickerath (CERN)']
+__credits__ = ['Ulrich Schwickerath (CERN)']
 __maintainer__ = 'Ulrich Schwickerath (CERN)'
 __email__ = 'Ulrich.Schwickerath@cern.ch'
 __status__ = 'Development'

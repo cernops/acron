@@ -17,9 +17,9 @@ from acron.exceptions import AcronError, AbortError
 from .config import CONFIG
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -48,11 +48,11 @@ def error_project_not_found():
 
 def error_unknown(message):
     '''
-    Error message when an unknown error occured.
+    Error message when an unknown error occurred.
 
     :param message: raw message returned by the server
     '''
-    sys.stderr.write('An unknown error occured, please try again or ')
+    sys.stderr.write('An unknown error occurred, please try again or ')
     sys.stderr.write('contact the support with the following information:\n')
     sys.stderr.write(message + '\n')
 
@@ -71,7 +71,7 @@ def jobs_delete(parser_args):
         valid_answers = ['y', 'yes', 'n', 'no', '']
         answer = 'not valid'
         while answer not in valid_answers:
-            answer = input('Are you sure you want to delete ? [y/N] ')
+            answer = input('Are you sure you want to delete? [y/N] ')
             if answer.lower() in ['y', 'yes']:
                 pass
             elif answer.lower() in ['n', 'no', '']:

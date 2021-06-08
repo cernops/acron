@@ -21,9 +21,9 @@ The client tools are used to
 
 ## Client - Server API
 The communication between the client and the server happens exclusively over HTTPS using an API.
-Authentication is done using kerberos5. The kerberos principal determins the user name to act on.
+Authentication is done using kerberos5. The kerberos principal determines the user name to act on.
 
-Requests always only act on the files of the authenticated users. Eg a delete on the /jobs endpoint will only delete the crontab entries of the corresponding user.
+Requests always only act on the files of the authenticated users. E.g. a delete on the /jobs endpoint will only delete the crontab entries of the corresponding user.
 ### /creds endpoint
 
 * PUT: create or update user credentials

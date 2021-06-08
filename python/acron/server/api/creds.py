@@ -23,9 +23,9 @@ from acron.exceptions import (ArgsMissingError, ArgsMalformedError, CredsError,
                               CredsNoFileError, KinitError)
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -61,7 +61,7 @@ def update_creds(creds_storage):
         keytab_encrypted.close()
         if (os.stat(keytab_encrypted_path).st_size > current_app.config['CREDS']['KEYTAB_MAX_LENGTH'] or
                 os.stat(keytab_encrypted_path).st_size == 0):
-            raise ArgsMalformedError('User provided a wrongly formated keytab')
+            raise ArgsMalformedError('User provided a wrongly formatted keytab')
 
         creds_storage.update_creds(keytab_encrypted_path)
 
@@ -134,7 +134,7 @@ def delete_creds(creds_storage):
 @dump_args
 def setup_creds_storage():
     '''
-    Instanciate the Creds class based on the config.
+    Instantiate the Creds class based on the config.
 
     :returns: a Creds instance
     '''

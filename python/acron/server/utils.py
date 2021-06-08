@@ -25,9 +25,10 @@ from acron.utils import krb_destroy as ext_krb_destroy
 
 __author__ = 'Philippe Ganz (CERN)'
 __credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
-               'Nacho Barrientos (CERN)', 'David Moreno Garcia (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+               'Nacho Barrientos (CERN)', 'David Moreno Garcia (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -119,9 +120,9 @@ def get_remote_hostname():
 @dump_args
 def default_log_line_request():
     '''
-    Generates a formated string for logging on requests.
+    Generates a formatted string for logging on requests.
 
-    :returns: a formated string
+    :returns: a formatted string
     '''
     return 'User {username} ({host}) requests {method}'.format(
         username=request.remote_user, host=get_remote_hostname(), method=request.method)

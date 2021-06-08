@@ -24,9 +24,9 @@ from acron.utils import (get_current_user, gpg_add_public_key, gpg_encrypt_file,
 from .config import CONFIG
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -49,11 +49,11 @@ def error_creds_expired():
 
 def error_unknown(message):
     '''
-    Error message when an unknown error occured.
+    Error message when an unknown error occurred.
 
     :param message: raw message returned by the server
     '''
-    sys.stderr.write('An unknown error occured, please try again or ')
+    sys.stderr.write('An unknown error occurred, please try again or ')
     sys.stderr.write('contact the support with the following information:\n')
     sys.stderr.write(message)
 
@@ -151,7 +151,7 @@ def creds_put(parser_args):
             keytab = parser_args.file
         elif parser_args.generate:
             sys.stdout.write('Where do you want to save the keytab on disk ')
-            sys.stdout.write('(press Enter to confirm or enter new path) ?\n')
+            sys.stdout.write('(press Enter to confirm or enter new path)?\n')
             default_path = os.path.expandvars(os.path.expanduser(CONFIG['KEYTAB_DEFAULT_PATH']))
             default_path += "/" + username + '.keytab'
             answer = input('(' + default_path + ') ')
@@ -164,11 +164,11 @@ def creds_put(parser_args):
                 raise AbortError
             if os.path.isfile(keytab):
                 sys.stdout.write('A file with the same name already exists. ')
-                answer = input('Replace it ? [y/N] ')
+                answer = input('Replace it? [y/N] ')
                 if answer in ['y', 'yes']:
                     os.remove(keytab)
                 elif answer in ['n', 'no', '']:
-                    sys.stderr.write('OK, so we will add credentials to the exiting keytab file...\n')#pylint: disable=line-too-long
+                    sys.stderr.write('OK, so we will add credentials to the existing keytab file...\n')#pylint: disable=line-too-long
                 else:
                     sys.stderr.write('Please provide a valid answer.\n')
                     raise ValueError
@@ -179,7 +179,7 @@ def creds_put(parser_args):
             else:
                 realms.append(CONFIG['DOMAIN'].upper())
             for realm in realms:
-                sys.stderr.write('Generating ketyab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
+                sys.stderr.write('Generating keytab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
                 keytab_generator(username, realm, CONFIG['KEYTAB_ENCRYPTION_TYPES'], keytab,
                                  flavor=CONFIG['KRB_CLIENTS_FLAVOR'],
                                  script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)#pylint: disable=line-too-long
@@ -190,7 +190,7 @@ def creds_put(parser_args):
         sys.stdout.write(' |  I  | ' + 'to the Acron service. By doing so, you authorize the \n')#pylint: disable=line-too-long
         sys.stdout.write(' |  .  | ' + 'Acron service to impersonate you during the execution of \n')#pylint: disable=line-too-long
         sys.stdout.write(' +=====+ ' + 'tasks scheduled for this account. \n')
-        answer = input('Do you agree to those terms ? [y/N] ')
+        answer = input('Do you agree to those terms? [y/N] ')
         if answer in ['y', 'yes']:
             pass
         elif answer in ['n', 'no', '']:
@@ -205,7 +205,7 @@ def creds_put(parser_args):
             valid_answers = ['y', 'yes', 'n', 'no', '']
             answer = 'not valid'
             while answer not in valid_answers:
-                answer = input('Add it now ? [y/N] ')
+                answer = input('Add it now? [y/N] ')
                 if answer.lower() in ['y', 'yes']:
                     sys.stdout.write('Adding the acron public key in your gnupg keyring...')
                     gpg_add_public_key(CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_PATH'])#pylint: disable=line-too-long
@@ -273,6 +273,6 @@ def creds_put(parser_args):
         try:
             rmtree(temp_dir)
         except NameError:
-            pass # exception occured before temp_dir was assigned
+            pass # exception occurred before temp_dir was assigned
 
     return return_code

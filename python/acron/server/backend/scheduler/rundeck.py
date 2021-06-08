@@ -23,16 +23,16 @@ from acron.server.utils import dump_args, fqdnify, create_parent
 from . import Scheduler
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 def _cron2quartz(schedule):
     fields = re.split(r'\s+', schedule)
     if fields[2] == '*':
         if fields[4] == '*':
-            # flaw: if both all monthdays and all weekdays are specified, weekday should be ?
+            # flaw: if both all monthdays and all weekdays are specified, weekday should be?
             fields[4] = '?'
         else:
             if fields[4] != '?':

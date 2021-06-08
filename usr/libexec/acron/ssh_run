@@ -29,9 +29,9 @@ from acron.exceptions import CredsError, CredsNoFileError, KinitError, SSHFailur
 from acron.utils import krb_init_keytab, krb_check_keytab
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 with open('/etc/acron/server.config', 'r') as config_file:
@@ -65,6 +65,7 @@ def init_creds_external_script(username, realm=None):
     Initializes credentials using and external script.
 
     :param username: name of the user to initialize the credentials for
+    :param realm:    authentication domain
     :raises:         CredsError if the external script fails
     '''
     process = Popen([CONFIG['CREDS']['FAILOVER_SCRIPT'], username, realm],
@@ -100,6 +101,7 @@ def init_creds(username, target):
     Get the user's credentials and get a Kerberos ticket.
 
     :param username: name of the user to initialize the credentials for
+    :param target:   hostname of the executing node
     :raises:         CredsNoFileError if credentials are not found
     :raises:         CredsError if GPG decryption fails
     '''
