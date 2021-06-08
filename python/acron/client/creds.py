@@ -214,12 +214,12 @@ def creds_put(parser_args):
                     raise AbortError
 
         temp_dir = mkdtemp()
-        keytab_encrypted = os.path.join(temp_dir, 'keytab.gpg')
-        sys.stdout.write('Encrypting the keytab... ')
-        gpg_encrypt_file(creds_file, keytab_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
-        sys.stdout.write('Keytab successfully encrypted\n')
-        files = {'keytab': open(keytab_encrypted, 'rb')}
-        sys.stdout.write('Sending the keytab to the server...\n')
+        creds_file_encrypted = os.path.join(temp_dir, 'keytab.gpg')
+        sys.stdout.write('Encrypting credentials file... ')
+        gpg_encrypt_file(creds_file, creds_file_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
+        sys.stdout.write('Credentials file successfully encrypted\n')
+        files = {'keytab': open(creds_file_encrypted, 'rb')}
+        sys.stdout.write('Sending credentials file to the server...\n')
         response = requests.put(
             CONFIG['ACRON_SERVER_FULL_URL'] + 'creds/', files=files,
             auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
