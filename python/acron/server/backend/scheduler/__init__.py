@@ -201,9 +201,9 @@ class Scheduler(ABC):
         '''
 
     @abstractmethod
-    def is_sharable(self):
+    def is_shareable(self):
         '''
-        Get the sharable status of the current project.
+        Get the shareable status of the current project.
 
         :raises ProjectNotFoundError: if the project doesn't exist
         :returns:                     a boolean

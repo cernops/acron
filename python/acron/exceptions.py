@@ -118,7 +118,7 @@ class NotShareableError(SchedulerError):
 
 class NoAccessError(SchedulerError):
     '''
-    Project is sharable but the requesting user doesn't have access.
+    Project is shareable but the requesting user doesn't have access.
     '''
 
 class CrontabError(SchedulerError):

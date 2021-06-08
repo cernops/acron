@@ -246,18 +246,19 @@ def check_shared_project_access(user, project, scheduler_class):
     Performs an ACL lookup to dertermine is a particular user can access a shared project.
 
     :raises NoAccessError:    if the user is not authorized
-    :raises NotShareableError: if the project is not sharable
+    :raises NotShareableError: if the project is not shareable
     :returns:                 a Scheduler object initialized with the shared project
     '''
     scheduler = scheduler_class(project, current_app.config)
-    if scheduler.is_sharable():
-        users_with_access_to_project = ldap_groups_expansion('acron-' + project)
+    if scheduler.is_shareable():
+        users_with_access_to_project = ldap_groups_expansion(
+            'acron-' + project)
         if user not in users_with_access_to_project:
-            logging.warning('%s on /jobs/: project %s is sharable, but user %s not in e-group members %s.',
+            logging.warning('%s on /jobs/: project %s is shareable, but user %s not in e-group members %s.',
                             default_log_line_request(), project, user, users_with_access_to_project)
             raise NoAccessError
     else:
-        logging.warning('%s on /jobs/: project %s is not sharable.',
+        logging.warning('%s on /jobs/: project %s is not shareable.',
                         default_log_line_request(), project)
         raise NotShareableError
     return scheduler
