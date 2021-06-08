@@ -49,7 +49,7 @@ def update_creds(creds_storage):
 
         temp_dir = mkdtemp()
         os.chmod(temp_dir, 0o0755)
-        creds_encrypted_path = os.path.join(temp_dir, 'creds.gpg')
+        creds_encrypted_path = os.path.join(temp_dir, 'keytab.gpg')
         creds_encrypted = open(creds_encrypted_path, 'wb+')
         os.chmod(creds_encrypted_path, 0o0644)
 

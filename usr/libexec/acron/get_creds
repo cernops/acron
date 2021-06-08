@@ -40,7 +40,7 @@ def get_creds(username):
     :returns:        OK if creds are available, NO_VALID_CREDS if no valid creds are found, BACKEND_ERROR else
     '''
     creds_file = os.path.join(CONFIG['CREDS']['CACHE'], username + '.keytab')
-    creds_file_encrypted = os.path.join(CONFIG['CREDS']['LOCATION'], username + '.creds.gpg')
+    creds_file_encrypted = os.path.join(CONFIG['CREDS']['LOCATION'], username + '.keytab.gpg')
     status_code = ERRORS['OK']
     try:
         if not os.path.isfile(creds_file_encrypted):
