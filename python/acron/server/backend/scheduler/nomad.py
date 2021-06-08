@@ -14,9 +14,9 @@ from acron.server.utils import dump_args
 from . import Scheduler
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -206,9 +206,9 @@ class Nomad(Scheduler):
         raise NomadError
 
     @dump_args
-    def is_sharable(self):
+    def is_shareable(self):
         '''
-        Get the sharable status of the current project.
+        Get the shareable status of the current project.
 
         :raises ProjectNotFoundError: if the project doesn't exist
         :returns:                     a boolean
