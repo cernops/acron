@@ -90,9 +90,7 @@ def get_creds_status(creds_storage):
 
     try:
         file_local = creds_storage.get_creds()
-
-        if file_local.endswith('.keytab'):
-            krb_init_keytab(file_local, request.remote_user)
+        krb_init_keytab(file_local, request.remote_user)
 
     except CredsNoFileError:
         logging.warning('%s on /creds/: Creds backend does not have the users credentials.',
