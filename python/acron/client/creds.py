@@ -184,10 +184,7 @@ def creds_put(parser_args):
                                  flavor=CONFIG['KRB_CLIENTS_FLAVOR'],
                                  script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)#pylint: disable=line-too-long
             sys.stdout.write('Keytab successfully created at ' + os.path.expanduser(creds_file) + '\n')
-
-        if parser_args.file.endswith('.keytab'):
-            krb_init_keytab(creds_file, username)
-
+        krb_init_keytab(creds_file, username)
         sys.stdout.write(' +=====+ ' + 'Your credentials are ready to be sent to the Acron server. \n')#pylint: disable=line-too-long
         sys.stdout.write(' |  I  | ' + 'Please be aware that you are delegating your credentials \n')#pylint: disable=line-too-long
         sys.stdout.write(' |  I  | ' + 'to the Acron service. By doing so, you authorize the \n')#pylint: disable=line-too-long
