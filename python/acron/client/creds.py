@@ -214,17 +214,17 @@ def creds_put(parser_args):
                     raise AbortError
 
         temp_dir = mkdtemp()
-        creds_file_encrypted = os.path.join(temp_dir, 'keytab.gpg')
-        sys.stdout.write('Encrypting credentials file... ')
-        gpg_encrypt_file(creds_file, creds_file_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
-        sys.stdout.write('Credentials file successfully encrypted\n')
-        files = {'creds': open(creds_file_encrypted, 'rb')}
-        sys.stdout.write('Sending credentials file to the server...\n')
+        keytab_encrypted = os.path.join(temp_dir, 'keytab.gpg')
+        sys.stdout.write('Encrypting the keytab... ')
+        gpg_encrypt_file(creds_file, keytab_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
+        sys.stdout.write('Keytab successfully encrypted\n')
+        files = {'keytab': open(keytab_encrypted, 'rb')}
+        sys.stdout.write('Sending the keytab to the server...\n')
         response = requests.put(
             CONFIG['ACRON_SERVER_FULL_URL'] + 'creds/', files=files,
             auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
         if response.status_code == 200:
-            sys.stdout.write('Credentials file successfully uploaded to the server.\n')
+            sys.stdout.write('Credentials successfully uploaded to the server.\n')
         elif response.status_code in [401, 403]:
             error_no_access()
             return_code = ERRORS['NOT_ALLOWED']
@@ -258,7 +258,7 @@ def creds_put(parser_args):
         sys.stderr.write('Check if you entered the correct password or retry on a more recent OS.\n')#pylint: disable=line-too-long
         return_code = ERRORS['BAD_ARGS']
     except GPGError as error:
-        sys.stderr.write('Error whilst encyphering your credentials file: ' + str(error) + '\n')
+        sys.stderr.write('Error whilst encyphering your keytab: ' + str(error) + '\n')
         sys.stderr.write('Please try again or raise a ticket towards the Acron\n')
         sys.stderr.write('service if the error persists.\n')
         return_code = ERRORS['BACKEND_ERROR']
