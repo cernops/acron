@@ -9,175 +9,184 @@
 # Bash completion script for the acron command and subcommands
 #
 # __author__ = 'Philippe Ganz (CERN)'
-# __credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-# __maintainer__ = 'Philippe Ganz (CERN)'
-# __email__ = 'philippe.ganz@cern.ch'
+# __credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+# __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+# __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 # __status__ = 'Development'
 #
 
-_acron()
-{
+_acron() {
   local cur
   cur=${COMP_WORDS[COMP_CWORD]}
 
   case ${COMP_CWORD} in
-    1)
-      COMPREPLY=($(compgen -W "creds jobs --version --help" -- "${cur}"))
+  1)
+    COMPREPLY=($(compgen -W "creds jobs projects --version --help" -- "${cur}"))
+    ;;
+  2)
+    case ${COMP_WORDS[COMP_CWORD - 1]} in
+    creds)
+      COMPREPLY=($(compgen -W "delete status upload --help" -- "${cur}"))
       ;;
-    2)
-      case ${COMP_WORDS[COMP_CWORD-1]} in
-        creds)
-          COMPREPLY=($(compgen -W "delete status upload --help" -- "${cur}"))
-          ;;
-        jobs)
-          COMPREPLY=($(compgen -W "delete show create update enable disable --help" -- "${cur}"))
-          ;;
+    jobs)
+      COMPREPLY=($(compgen -W "delete show create update enable disable --help" -- "${cur}"))
+      ;;
+    projects)
+      COMPREPLY=($(compgen -W "show --all --help" -- "${cur}"))
+      ;;
+    esac
+    ;;
+  3)
+    case ${COMP_WORDS[COMP_CWORD - 2]} in
+    creds)
+      case ${COMP_WORDS[COMP_CWORD - 1]} in
+      upload)
+        COMPREPLY=($(compgen -W "--file --generate --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    3)
-      case ${COMP_WORDS[COMP_CWORD-2]} in
-        creds)
-          case ${COMP_WORDS[COMP_CWORD-1]} in
-            upload)
-              COMPREPLY=($(compgen -W "--file --generate --help" -- "${cur}"))
-              ;;
-          esac
-          ;;
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-1]} in
-            delete|enable|disable)
-              COMPREPLY=($(compgen -W "--job_id --all --project --help" -- "${cur}"))
-              ;;
-            show)
-              COMPREPLY=($(compgen -W "--job_id --project --help" -- "${cur}"))
-              ;;
-            create)
-              COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-          esac
-          ;;
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 1]} in
+      delete | enable | disable)
+        COMPREPLY=($(compgen -W "--job_id --all --project --help" -- "${cur}"))
+        ;;
+      show)
+        COMPREPLY=($(compgen -W "--job_id --project --help" -- "${cur}"))
+        ;;
+      create)
+        COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    4)
-      case ${COMP_WORDS[COMP_CWORD-3]} in
-        creds)
-          case ${COMP_WORDS[COMP_CWORD-2]} in
-            upload)
-              case ${COMP_WORDS[COMP_CWORD-1]} in
-                -f|--file)
-                  COMPREPLY=($(compgen -A file -- "${cur}"))
-                  ;;
-              esac
-              ;;
-          esac
-          ;;
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-2]} in
-            delete|enable|disable)
-              case ${COMP_WORDS[COMP_CWORD-1]} in
-                -a|--all)
-                  COMPREPLY=($(compgen -W "--project --help" -- "${cur}"))
-                  ;;
-              esac
-              ;;
-            create)
-              case ${COMP_WORDS[COMP_CWORD-1]} in
-                -t|--target)
-                  COMPREPLY=( $(compgen -W "$(cut -f 1 -d ',' <~/.ssh/known_hosts)" -- "${cur}") )
-                  ;;
-              esac
-              ;;
-            update)
-              case ${COMP_WORDS[COMP_CWORD-1]} in
-                -t|--target)
-                  COMPREPLY=( $(compgen -W "$(cut -f 1 -d ',' <~/.ssh/known_hosts)" -- "${cur}") )
-                  ;;
-              esac
-              ;;
-          esac
-          ;;
+    projects)
+      case ${COMP_WORDS[COMP_CWORD - 1]} in
+      show)
+        COMPREPLY=($(compgen -W "--all --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    5)
-      case ${COMP_WORDS[COMP_CWORD-4]} in
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-3]} in
-            delete|show|enable|disable)
-              case ${COMP_WORDS[COMP_CWORD-2]} in
-                -j|--job_id)
-                  COMPREPLY=($(compgen -W "--project --help" -- "${cur}"))
-                  ;;
-              esac
-              ;;
-            create)
-              COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-          esac
+    esac
+    ;;
+  4)
+    case ${COMP_WORDS[COMP_CWORD - 3]} in
+    creds)
+      case ${COMP_WORDS[COMP_CWORD - 2]} in
+      upload)
+        case ${COMP_WORDS[COMP_CWORD - 1]} in
+        -f | --file)
+          COMPREPLY=($(compgen -A file -- "${cur}"))
           ;;
+        esac
+        ;;
       esac
       ;;
-    7)
-      case ${COMP_WORDS[COMP_CWORD-6]} in
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-5]} in
-            create)
-              COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-          esac
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 2]} in
+      delete | enable | disable)
+        case ${COMP_WORDS[COMP_CWORD - 1]} in
+        -a | --all)
+          COMPREPLY=($(compgen -W "--project --help" -- "${cur}"))
           ;;
+        esac
+        ;;
+      create)
+        case ${COMP_WORDS[COMP_CWORD - 1]} in
+        -t | --target)
+          COMPREPLY=($(compgen -W "$(cut -f 1 -d ',' <~/.ssh/known_hosts)" -- "${cur}"))
+          ;;
+        esac
+        ;;
+      update)
+        case ${COMP_WORDS[COMP_CWORD - 1]} in
+        -t | --target)
+          COMPREPLY=($(compgen -W "$(cut -f 1 -d ',' <~/.ssh/known_hosts)" -- "${cur}"))
+          ;;
+        esac
+        ;;
       esac
       ;;
-    9)
-      case ${COMP_WORDS[COMP_CWORD-8]} in
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-7]} in
-            create)
-              COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-            ;;
-          esac
+    esac
+    ;;
+  5)
+    case ${COMP_WORDS[COMP_CWORD - 4]} in
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 3]} in
+      delete | show | enable | disable)
+        case ${COMP_WORDS[COMP_CWORD - 2]} in
+        -j | --job_id)
+          COMPREPLY=($(compgen -W "--project --help" -- "${cur}"))
           ;;
+        esac
+        ;;
+      create)
+        COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    11)
-      case ${COMP_WORDS[COMP_CWORD-10]} in
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-9]} in
-            create)
-              COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-          esac
-          ;;
+    esac
+    ;;
+  7)
+    case ${COMP_WORDS[COMP_CWORD - 6]} in
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 5]} in
+      create)
+        COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    13)
-      case ${COMP_WORDS[COMP_CWORD-12]} in
-        jobs)
-          case ${COMP_WORDS[COMP_CWORD-11]} in
-            update)
-              COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
-              ;;
-          esac
-          ;;
+    esac
+    ;;
+  9)
+    case ${COMP_WORDS[COMP_CWORD - 8]} in
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 7]} in
+      create)
+        COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
       esac
       ;;
-    *)
-      COMPREPLY=()
+    esac
+    ;;
+  11)
+    case ${COMP_WORDS[COMP_CWORD - 10]} in
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 9]} in
+      create)
+        COMPREPLY=($(compgen -W "--schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      esac
       ;;
+    esac
+    ;;
+  13)
+    case ${COMP_WORDS[COMP_CWORD - 12]} in
+    jobs)
+      case ${COMP_WORDS[COMP_CWORD - 11]} in
+      update)
+        COMPREPLY=($(compgen -W "--job_id --schedule --target --command --description --project --help" -- "${cur}"))
+        ;;
+      esac
+      ;;
+    esac
+    ;;
+  *)
+    COMPREPLY=()
+    ;;
   esac
 }
 

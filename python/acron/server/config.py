@@ -16,7 +16,7 @@ __email__ = 'philippe.ganz@cern.ch'
 __status__ = 'Development'
 
 
-# pylint: disable=R0903
+# pylint: disable=too-few-public-methods
 class Config:
     '''
     Config class containing the application's default values.

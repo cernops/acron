@@ -13,23 +13,23 @@
 
 import argparse
 import datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import logging
 import os
-import smtplib
 from subprocess import Popen, PIPE, STDOUT
 import sys
 import time
 import syslog
 import yaml
 import pkg_resources
-from acron.errors import ERRORS
-from acron.exceptions import CredsError, CredsNoFileError, KinitError, SSHFailureError
+from acron.constants import ReturnCodes
+from acron.exceptions import (CredsError, CredsNoFileError, KinitError,
+                              SSHFailureError, JobExecutionError)
 from acron.utils import krb_init_keytab, krb_check_keytab
+from acron.notifications import email_user
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -42,22 +42,6 @@ with open(os.path.join(CONFIG['CREDS']['CONFIG'], 'file.config'), 'r') as config
 logging.basicConfig(filename=CONFIG['EXECUTIONS_LOG_FILE'], level='INFO',
                     format='%(asctime)s %(levelname)-8s  %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
-
-def email_user(username, subject, body):
-    '''
-    Send an email to a user
-
-    :param username: name of the user
-    :param subject:  the ubject of the e-mail
-    :param body:     the body of the e-mail
-    '''
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = 'no-reply@{}'.format(CONFIG['DOMAIN'])
-    msg['To'] = '{}@{}'.format(username, CONFIG['DOMAIN'])
-    msg.attach(MIMEText(body))
-    smtp_obj = smtplib.SMTP('localhost')
-    smtp_obj.sendmail(msg['From'], msg['To'], msg.as_string())
 
 
 def init_creds_external_script(username, realm=None):
@@ -75,6 +59,7 @@ def init_creds_external_script(username, realm=None):
         sys.stderr.write(err)
         raise CredsError(err)
 
+
 def get_creds_file(username):
     ''' unpack and return the credential cache file name
     :param username: name of the user to initialize the credentials for
@@ -87,7 +72,7 @@ def get_creds_file(username):
     out, err = process.communicate()
     if process.returncode != 0:
         sys.stderr.write(err)
-        if process.returncode == ERRORS['NO_VALID_CREDS']:
+        if process.returncode == ReturnCodes.NO_VALID_CREDS:
             if CONFIG['CREDS']['ALLOW_NO_KEYTAB'] and CONFIG['CREDS']['FAILOVER_SCRIPT']:
                 init_creds_external_script(username)
             else:
@@ -95,6 +80,7 @@ def get_creds_file(username):
         else:
             raise CredsError(err)
     return out
+
 
 def init_creds(username, target):
     '''
@@ -119,16 +105,20 @@ def init_creds(username, target):
             # check if we can kinit with all realms found in the keytab
             for realm in realms:
                 try:
-                    krb_init_keytab(creds_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
-                    launch_command(username, realm, target, '/bin/true', retries=1, log=False)
-                    logging.info("Connection test succeeded for realm %s", realm)
+                    krb_init_keytab(creds_file, username+'@'+realm,
+                                    cachefile="/tmp/krb5cc_"+username+"_"+realm)
+                    launch_command(username, realm, target,
+                                   '/bin/true', retries=1, log=False)
+                    logging.info(
+                        "Connection test succeeded for realm %s", realm)
                     return realm
                 except (KinitError, SSHFailureError) as error:
                     pass
             return None
         else:
             realm = realms[0]
-            krb_init_keytab(creds_file, username+'@'+realm, cachefile="/tmp/krb5cc_"+username+"_"+realm)
+            krb_init_keytab(creds_file, username+'@'+realm,
+                            cachefile="/tmp/krb5cc_"+username+"_"+realm)
             return realm
     except CredsNoFileError as error:
         logging.error(error)
@@ -136,6 +126,7 @@ def init_creds(username, target):
     except (CredsError) as error:
         logging.error(error)
         raise CredsError(error)
+
 
 def log_execution(username, target, command, duration, return_code):
     '''
@@ -151,7 +142,9 @@ def log_execution(username, target, command, duration, return_code):
     logging.info(message)
     syslog.syslog(message)
 
-def launch_command(username, realm, target, command, retries=3, log=True):#pylint: disable=too-many-arguments
+
+# pylint: disable=too-many-arguments
+def launch_command(username, realm, target, command, retries=3, log_attempts=True):
     '''
     Launch an ssh connection in name of the user.
 
@@ -159,11 +152,14 @@ def launch_command(username, realm, target, command, retries=3, log=True):#pylin
     :param target:   Target of the ssh command
     :param command:  Command to launch on the target
     :retries:        Number of retries, defaults to 3
-    :log:            Log the attempts or not
+    :log_attempts:   Log the attempts or not
     :raises:         SSHFailureError if the ssh connection failed
     '''
     cachefile = "/tmp/krb5cc_"+username+"_"+realm
-    logging.info("Launch command for user %s using %s in realm %s", username, cachefile, realm)
+
+    logging.info(
+        f'Launch command {command} for user {username} using {cachefile} in realm {realm}')
+
     # setup environment for ssh call
     execenv = os.environ.copy()
     execenv["KRB5CCNAME"] = cachefile
@@ -173,6 +169,7 @@ def launch_command(username, realm, target, command, retries=3, log=True):#pylin
         execenv["autologout"] = str(int(timeout/60))
     except KeyError:
         pass
+
     retc = 1
     attempt = 0
     while (retc != 0) and (attempt < retries):
@@ -189,15 +186,32 @@ def launch_command(username, realm, target, command, retries=3, log=True):#pylin
                         stderr=STDOUT,
                         env=execenv)
         out, _ = process.communicate()
-        if log:
+        if log_attempts:
             sys.stdout.write(out + '\n')
         retc = process.returncode
+
         if retc != 0 and attempt < retries:
-            logging.info("Connection to %s failed. Retrying in 5s", target)
+            logging.info(
+                f'Connection attempt no. {attempt} to {target} failed with exit code {retc},' +
+                f'{retries} retries left. Retrying in 5s...')
             time.sleep(5)
+
+    error_msg_postfix = f'failed with exit code {retc}. Output:\n{out}'
+
+    # Exit code 255 is returned when SSH connection fails
+    # Source: https://tldp.org/LDP/abs/html/exitcodes.html#AEN23549
+    if retc == 255:
+        logging.error(
+            f'SSH command {error_msg_postfix}')
+        raise SSHFailureError(retc, out)
+
     if retc != 0:
-        raise SSHFailureError(process.returncode, out)
+        logging.error(
+            f'Execution of job command {error_msg_postfix}')
+        raise JobExecutionError(retc, out)
+
     return out
+
 
 def run_ssh(job_id, username, target, command):
     '''
@@ -208,44 +222,59 @@ def run_ssh(job_id, username, target, command):
     :param target:   Target of the ssh command
     :param command:  Command to launch on the target
     '''
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
     start = time.time()
     realm = init_creds(username, target)
     if realm is not None:
         try:
-            output = launch_command(username, realm, target, command)
+            cmd_output = launch_command(username, realm, target, command)
+            output = cmd_output
         except (CredsNoFileError, KinitError) as error:
-            status_code = ERRORS['NO_VALID_CREDS']
-            message = str(error)
+            status_code = ReturnCodes.NO_VALID_CREDS
+            output = str(error)
         except CredsError as error:
-            status_code = ERRORS['BACKEND_ERROR']
-            message = str(error)
+            status_code = ReturnCodes.BACKEND_ERROR
+            output = str(error)
         except SSHFailureError as error:
-            status_code = ERRORS['SSH_ERROR']
-            message = str(error)
-        log_execution(username, target, command, time.time() - start, status_code)
-        if status_code != ERRORS['OK']:
-            if	status_code == ERRORS['SSH_ERROR']:
-                email_user(username,
-                           'Acron job ' + job_id + ' on ' + target + ' at ' + str(datetime.datetime.now()),
-                           job_id + ': ' + username + '@' + target + ' ' + command + '\n' + 'returned 0' +
-                           ', failed to connect to target ' + target)
-            else:
-                email_user(username,
-                           'Acron job ' + job_id + ' failed on ' + target + ' at ' + str(datetime.datetime.now()),
-                           job_id + ': ' + username + '@' + target + ' ' + command + '\n' +
-                           'returned ' + str(status_code) + ', producing following output:' + '\n\n' + message)
-        elif output != '':
-            email_user(username,
-                       'Acron job ' + job_id + ' on ' + target + ' at ' + str(datetime.datetime.now()),
-                       job_id + ': ' + username + '@' + target + ' ' + command + '\n' + 'returned 0' +
-                       ', producing following output:' + '\n\n' + output)
+            status_code = ReturnCodes.SSH_ERROR
+            output = str(error)
+        except JobExecutionError as error:
+            status_code = ReturnCodes.USER_ERROR
+            output = str(error)
+
+        log_execution(username, target, command,
+                      time.time() - start, status_code)
+
+        subject = f'Acron job {job_id}'
+        body = (f'Job {job_id}: {username}@{target} {command}' +
+                f'returned {str(status_code)}, ')
+
+        # Inform user in email subject that job failed
+        if status_code != ReturnCodes.OK:
+            subject += ' failed'
+
+        # Customize email body depending on outcome
+        if status_code == ReturnCodes.SSH_ERROR:
+            body += f'failed to connect to target {target}'
+        elif status_code == ReturnCodes.USER_ERROR:
+            body += (f'failed during execution of the command.\n' +
+                     'Please ensure that the command exits with return code 0 ' +
+                     'and update your job accordingly.')
+        elif not cmd_output or cmd_output == '':
+            body += 'producing no output.'
+        else:
+            body += 'producing the following output:' + '\n\n' + output
+
+        subject += f' on {target} at {str(datetime.datetime.now())}'
+        email_user(username, subject, body)
 
     return status_code
 
+
 def main():
-    """ parse arguments and run ssh command"""
-    parser = argparse.ArgumentParser(prog='get_creds', description='Acron ssh launcher.')
+    """parse arguments and run ssh command"""
+    parser = argparse.ArgumentParser(
+        prog='get_creds', description='Acron ssh launcher.')
     parser.add_argument(
         '-v', '--version', action='version',
         version=pkg_resources.require('acron')[0].version)
@@ -255,6 +284,7 @@ def main():
     parser.add_argument('command', help='Command to execute on the target.')
     args = parser.parse_args()
     return run_ssh(args.job_id, args.username, args.target, args.command)
+
 
 if __name__ == "__main__":
     sys.exit(main())

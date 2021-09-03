@@ -24,7 +24,7 @@
   scheduleEnabled: true
   sequence:
     commands:
-    - exec: '__COMMAND__'
+    - exec: __COMMAND__
     keepgoing: false
     strategy: node-first
   timeout: 1h

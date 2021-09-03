@@ -14,7 +14,7 @@ import argparse
 import sys
 import pkg_resources
 import yaml
-from acron.errors import ERRORS
+from acron.constants import ReturnCodes
 from acron.exceptions import SchedulerError
 from acron.server.backend.scheduler.rundeck import Rundeck
 from acron.server.utils import ldap_groups_expansion
@@ -23,7 +23,8 @@ with open('/etc/acron/server.config', 'r') as config_file:
     config = yaml.safe_load(config_file)
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -33,10 +34,10 @@ def clean_projects():
     '''
     Check for projects in the LDAP group and remove unlisted projects from the backend
     '''
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
     try:
-        projects_current = Rundeck.get_projects(config)
-        projects_goal = ldap_groups_expansion(config['PROJECTS_GROUP'])
+        projects_current = Rundeck.list_projects(config)
+        projects_goal = ldap_groups_expansion(config['USERS_GROUP'])
         projects_to_add = projects_goal - projects_current
         projects_to_remove = projects_current - projects_goal
 
@@ -47,7 +48,7 @@ def clean_projects():
 
     except SchedulerError:
         sys.stderr.write("A problem occurred with the backend.")
-        status_code = ERRORS["BACKEND_ERROR"]
+        status_code = ReturnCodes.BACKEND_ERROR
     return status_code
 
 

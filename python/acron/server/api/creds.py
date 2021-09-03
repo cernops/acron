@@ -15,7 +15,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from flask import Blueprint, current_app, request
 from flask_login import login_required
-from acron.errors import ERRORS
+from acron.constants import ReturnCodes
 from acron.server.http import http_response
 from acron.server.utils import default_log_line_request, dump_args, get_remote_hostname
 from acron.server.utils import krb_init_keytab
@@ -23,7 +23,8 @@ from acron.exceptions import (ArgsMissingError, ArgsMalformedError, CredsError,
                               CredsNoFileError, KinitError)
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -41,7 +42,7 @@ def update_creds(creds_storage):
     :param creds_storage: the creds storage backend
     :returns:             an HTTP payload
     '''
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
 
     try:
         if 'keytab' not in request.files:
@@ -50,27 +51,29 @@ def update_creds(creds_storage):
         temp_dir = mkdtemp()
         os.chmod(temp_dir, 0o0755)
         creds_encrypted_path = os.path.join(temp_dir, 'keytab.gpg')
-        creds_encrypted = open(creds_encrypted_path, 'wb+')
-        os.chmod(creds_encrypted_path, 0o0644)
+        with open(creds_encrypted_path, 'wb+') as creds_encrypted:
+            os.chmod(creds_encrypted_path, 0o0644)
 
-        file_uploaded = request.files['keytab']
-        if not file_uploaded or file_uploaded.filename == '':
-            raise ArgsMalformedError('User provided an empty creds file')
-        file_uploaded.save(creds_encrypted)
-        file_uploaded.close()
-        creds_encrypted.close()
+            file_uploaded = request.files['keytab']
+            if not file_uploaded or file_uploaded.filename == '':
+                raise ArgsMalformedError('User provided an empty creds file')
+            file_uploaded.save(creds_encrypted)
+            file_uploaded.close()
+            creds_encrypted.close()
+
         if (os.stat(creds_encrypted_path).st_size > current_app.config['CREDS']['KEYTAB_MAX_LENGTH'] or
                 os.stat(creds_encrypted_path).st_size == 0):
-            raise ArgsMalformedError('User provided a wrongly formated creds file')
+            raise ArgsMalformedError(
+                'User provided a wrongly formated creds file')
 
         creds_storage.update_creds(creds_encrypted_path)
 
     except (ArgsMissingError, ArgsMalformedError) as error:
         logging.warning('%s on /creds/: %s', default_log_line_request(), error)
-        status_code = ERRORS['BAD_ARGS']
+        status_code = ReturnCodes.BAD_ARGS
     except CredsError as error:
         logging.error('%s on /creds/: %s', default_log_line_request(), error)
-        status_code = ERRORS['BACKEND_ERROR']
+        status_code = ReturnCodes.BACKEND_ERROR
 
     finally:
         rmtree(temp_dir)
@@ -86,7 +89,7 @@ def get_creds_status(creds_storage):
     :param creds_storage: the creds storage backend
     :returns:             an HTTP payload
     '''
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
 
     try:
         file_local = creds_storage.get_creds()
@@ -95,14 +98,15 @@ def get_creds_status(creds_storage):
     except CredsNoFileError:
         logging.warning('%s on /creds/: Creds backend does not have the users credentials.',
                         default_log_line_request())
-        status_code = ERRORS['NO_VALID_CREDS']
+        status_code = ReturnCodes.NO_VALID_CREDS
     except KinitError:
-        logging.warning('%s on /creds/: Kerberos keytab initialization failed.', default_log_line_request())
-        status_code = ERRORS['CREDS_INVALID']
+        logging.warning(
+            '%s on /creds/: Kerberos keytab initialization failed.', default_log_line_request())
+        status_code = ReturnCodes.CREDS_INVALID
     except CredsError as error:
         logging.error('%s on /creds/: Creds backend failed to deliver creds. %s',
                       default_log_line_request(), error)
-        status_code = ERRORS['BACKEND_ERROR']
+        status_code = ReturnCodes.BACKEND_ERROR
 
     return http_response(status_code)
 
@@ -115,18 +119,18 @@ def delete_creds(creds_storage):
     :param creds_storage: the creds storage backend
     :returns:             an HTTP payload
     '''
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
 
     try:
         creds_storage.delete_creds()
     except CredsNoFileError:
         logging.warning('%s on /creds/: Creds backend does not have the users credentials.',
                         default_log_line_request())
-        status_code = ERRORS['NOT_FOUND']
+        status_code = ReturnCodes.NOT_FOUND
     except CredsError as error:
         logging.error('%s on /creds/: Creds backend encountered an error. %s',
                       default_log_line_request(), error)
-        status_code = ERRORS['BACKEND_ERROR']
+        status_code = ReturnCodes.BACKEND_ERROR
 
     return http_response(status_code)
 
@@ -148,7 +152,8 @@ def setup_creds_storage():
         logging.warning('User %s (%s) requests %s file backend: backend not implemented.',
                         request.remote_user, get_remote_hostname(),
                         current_app.config['CREDS']['TYPE'])
-        raise ValueError('Only file backends currently supported are: File and Vault')
+        raise ValueError(
+            'Only file backends currently supported are: File and Vault')
 
     return creds_class(request.remote_user, current_app.config)
 
@@ -174,5 +179,6 @@ def creds():
     if request.method == 'DELETE':
         return delete_creds(creds_storage)
 
-    logging.critical('%s on /creds/: Method not allowed!', default_log_line_request())
+    logging.critical('%s on /creds/: Method not allowed!',
+                     default_log_line_request())
     raise ValueError('Critical error: method not allowed!')

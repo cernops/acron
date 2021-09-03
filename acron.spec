@@ -1,5 +1,5 @@
 Name: python36-acron
-Version: 0.12.3
+Version: 0.14.0
 Release: 1%{?dist}
 License: GPLv3
 URL: https://gitlab.cern.ch/acron-devs/acron
@@ -346,6 +346,34 @@ fi
 
 
 %changelog
+* Wed Sep 1 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.14.0-1
+- set custom job names optionally
+- add command to delete project
+- add command to revoke project share
+- notify users via email about project shares
+- fix bug in commands with single quotes
+- increase user-friendliness (e.g., warn user if not member of required e-group)
+- Extend allowed characters in job's command
+- improve error handling
+- improve documentation
+* Tue Jul 27 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.13.0-2
+- fix bug on server by creating required intermediate directories for new users
+* Wed Jul 21 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.13.0-1
+- add projects command with man page and bash completion
+- bump API version from v0 to v1
+- add smoke test
+* Fri Jul 9 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.12.4-4
+- improve error handling when aborting log in
+- add bash completion for projects
+- fix bug in clients while handling server responses for jobs
+* Tue Jul 6 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.12.4-3
+- refactoring to improve code maintainability
+- fix bug in initialization of kerberos credentials
+* Fri Jun 18 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.12.4-2
+- improve sanity checks for command and description in acron jobs update and create
+- generalise credential treatment
+- improve script headers and documentation
+- improve robustness of bash scripts
 * Thu Apr 22 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.12.3-1
 - use crontab in quartz format to set the schedule
 * Thu Apr 15 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.12.2-1

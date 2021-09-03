@@ -16,18 +16,21 @@ import json
 import requests
 import gssapi
 from requests_gssapi import HTTPSPNEGOAuth
-from acron.errors import ERRORS
+from acron.constants import Endpoints, ReturnCodes
 from .config import CONFIG
 
+
 def get_user_from_principal():
-    ''' Get the user name from the current principal'''
+    ''' Get the username from the current principal'''
     try:
         creds = gssapi.creds.Credentials(usage='initiate')
         principal = str(creds.name.display_as(creds.name.name_type))
         return principal.split('@')[0]
-    except Exception as krb_error: #pylint: disable=broad-except
-        print("Cannot access principal. Please run kinit.\n %s", krb_error)
+    except Exception as krb_error:  # pylint: disable=broad-except
+        sys.stderr.write(
+            f"Cannot access principal. Please run kinit.\n{krb_error}\n")
         sys.exit(1)
+
 
 def read_secret(length):
     ''' read the 2FA secret from stdin '''
@@ -37,17 +40,20 @@ def read_secret(length):
         return None
     return secret
 
+
 def otp_secret(secret):
     ''' check if secret can be a OTP '''
     if secret is not None and len(secret) == 6:
         return '{"otp":"' + secret + '"}'
     return None
 
+
 def yubi_secret(secret):
     ''' check if secret can be a yubicode '''
     if secret is not None and len(secret) == 44:
         return '{"yubicode":"' + secret + '"}'
     return None
+
 
 def ask_for_secret():
     ''' dialog to ask for the secret'''
@@ -60,34 +66,46 @@ def ask_for_secret():
 2. Yubikey
 
 Option (1-2): """ % username, end="")
-        chars = sys.stdin.readlines(1)[0].rstrip()
-        if len(chars) == 6:
-            secret = otp_secret(chars)
-        if len(chars) == 44:
-            secret = yubi_secret(chars)
-        if chars == '1':
-            print('\nOTP: ', end="")
-            secret = otp_secret(read_secret(6))
-        if chars == '2':
-            print('\nYubikey: ', end="")
-            secret = yubi_secret(read_secret(44))
-        if secret is not None:
-            return secret
-        print('\nNo or invalid secret entered.')
+        try:
+            chars = sys.stdin.readlines(1)[0].rstrip()
+            if len(chars) == 6:
+                secret = otp_secret(chars)
+            if len(chars) == 44:
+                secret = yubi_secret(chars)
+            if chars == '1':
+                print('\nOTP: ', end="")
+                secret = otp_secret(read_secret(6))
+            if chars == '2':
+                print('\nYubikey: ', end="")
+                secret = yubi_secret(read_secret(44))
+            if secret is not None:
+                return secret
+            print('\nNo or invalid secret entered.')
+        except KeyboardInterrupt:
+            # Print empty line
+            print('')
+            sys.exit(0)
+
 
 def check_login_status():
     ''' check if the user is logged into the server '''
     # check login status
-    path = CONFIG['ACRON_SERVER_FULL_URL'] + 'session/status'
-    response = requests.get(path, auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
+    path = CONFIG['ACRON_SERVER_FULL_URL'] + \
+        Endpoints.SESSION_TRAILING_SLASH + 'status'
+    response = requests.get(path, auth=HTTPSPNEGOAuth(),
+                            verify=CONFIG['SSL_CERTS'])
     if response.status_code == 200:
         return response.json()['loggedIn']
+    if response.status_code == 401:
+        return response.text
     return False
 
+
 def login_user():
-    ''' login the user '''
+    ''' log in the user '''
     secret = ask_for_secret()
-    path = CONFIG['ACRON_SERVER_FULL_URL'] + 'session/login'
+    path = CONFIG['ACRON_SERVER_FULL_URL'] + \
+        Endpoints.SESSION_TRAILING_SLASH + 'login'
     headers = {
         "Content-Type": "application/json"
     }
@@ -103,20 +121,21 @@ def login_user():
                 return 0
             return response.json()['AuthTimestamp']
         except json.decoder.JSONDecodeError:
-            print("%s" % response.text)
+            sys.stderr.write("%s" % response.text)
             sys.exit(1)
     return 0
+
 
 def login():
     ''' check session status and login the user if needed '''
     # check logged user
     if os.environ['USER'] != get_user_from_principal():
-        print('WARNING: Kerberos Principal does not match the logged in user name')
+        print('WARNING: Kerberos Principal does not match the logged in username')
     # check login status
     if check_login_status():
-        return  ERRORS['OK']
+        return ReturnCodes.OK
     authtime = login_user()
     if authtime > 0:
-        return ERRORS['OK']
-    print('2FA authentication has failed')
+        return ReturnCodes.OK
+    sys.stderr.write('2FA authentication has failed.\n')
     sys.exit(1)

@@ -17,9 +17,9 @@ for:
         - run
         - toggle_schedule
   node:
-    - allow:
-        - read
-        - run
+    - equals:
+        rundeck_server: 'false'
+      allow: [read, run]
 by:
   username:
     - '__USERNAME__'

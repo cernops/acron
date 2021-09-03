@@ -17,45 +17,136 @@ import sys
 from tempfile import mkdtemp
 import requests
 from requests_gssapi import HTTPSPNEGOAuth
-from acron.errors import ERRORS
 from acron.exceptions import AcronError, AbortError, GPGError, KinitError, KTUtilError
 from acron.utils import (get_current_user, gpg_add_public_key, gpg_encrypt_file, gpg_key_exist,
                          keytab_generator, krb_init_keytab)
+from acron.constants import Endpoints, ReturnCodes
 from .config import CONFIG
+from .errors import ServerError
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
-def error_no_access():
+def _handle_found_get(*_):
     '''
-    Error message when user has no access to the service.
-    '''
-    sys.stderr.write('You do not have access.\nPlease check that you have a valid ')
-    sys.stderr.write('Kerberos ticket and that you are registered to the service ')
-    sys.stderr.write(f"({CONFIG['AUTHORIZED_USER_GROUP']} group).\n")
+    Handle HTTP response status code 200 (OK)
 
-def error_creds_expired():
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
     '''
-    Error message when user credentials have expired.
-    '''
-    sys.stderr.write('Your uploaded credentials are no longer valid.')
-    sys.stderr.write('They may have expired, or your password may have been changed recently. ')
-    sys.stderr.write('Please update them using the "acron creds upload -g" command.')
+
+    sys.stdout.write('Credentials are on the server and valid.\n')
+    return ReturnCodes.OK
 
 
-def error_unknown(message):
+def _handle_found_put(*_):
     '''
-    Error message when an unknown error occurred.
+    Handle HTTP response status code 200 (OK)
 
-    :param message: raw message returned by the server
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
     '''
-    sys.stderr.write('An unknown error occurred, please try again or ')
-    sys.stderr.write('contact the support with the following information:\n')
-    sys.stderr.write(message)
+
+    sys.stdout.write('Credentials successfully uploaded to the server.\n')
+    return ReturnCodes.OK
+
+
+def _handle_found_delete(*_):
+    '''
+    Handle HTTP response status code 200 (OK)
+
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
+    '''
+
+    sys.stdout.write('Credentials successfully deleted.\n')
+    return ReturnCodes.OK
+
+
+def _handle_no_access(*_):
+    '''
+    Handle HTTP response status code 401 (Unauthorized) and 403 (Forbidden)
+
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
+    '''
+
+    ServerError.error_no_access_job()
+    return ReturnCodes.NOT_ALLOWED
+
+
+def _handle_not_found(*_):
+    '''
+    Handle HTTP response status code 404 (Not Found)
+
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
+    '''
+
+    return_code = ReturnCodes.NOT_FOUND
+
+    ServerError.error_creds_not_found()
+
+    return return_code
+
+
+def _handle_internal_error(*_):
+    '''
+    Handle HTTP response status code 500 (Internal Server Error)
+
+    :params *_: Ignore parameters passed
+    :returns:   the API's return value
+    '''
+
+    ServerError.error_creds_expired()
+    return ReturnCodes.CREDS_INVALID
+
+
+def _handle_invalid(response):
+    '''
+    Handle unrecognized HTTP response status code generically
+
+    :params response: HTTP response from server
+    :returns:         the API's return value
+    '''
+    print_error_fallback = True
+    try:
+        if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
+                'message' in response.json().keys()):
+            sys.stderr.write(response.json()['message'] + '\n')
+            print_error_fallback = False
+    finally:
+        if print_error_fallback:
+            ServerError.error_unknown(response.text)
+
+    return ReturnCodes.BACKEND_ERROR
+
+
+def _handle_invalid_get(response):
+    '''
+    Handle unrecognized HTTP response status code generically
+
+    :params response: HTTP response from server
+    :returns:         the API's return value
+    '''
+    print_error_fallback = True
+    try:
+        if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
+                'message' in response.json().keys()):
+            sys.stderr.write(response.json()['message'] + '\n')
+            print_error_fallback = False
+            return_code = ReturnCodes.NO_VALID_CREDS
+    finally:
+        return_code = ReturnCodes.BACKEND_ERROR
+        if print_error_fallback:
+            ServerError.error_unknown(response.text)
+
+    return return_code
 
 
 # pylint: disable=W0613
@@ -68,30 +159,26 @@ def creds_delete(parser_args):
     '''
     try:
         response = requests.delete(
-            CONFIG['ACRON_SERVER_FULL_URL'] + 'creds/',
+            CONFIG['ACRON_SERVER_FULL_URL'] + Endpoints.CREDS_TRAILING_SLASH,
             auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
-        if response.status_code == 200:
-            sys.stdout.write('Credentials successfully deleted.\n')
-            return_code = ERRORS['OK']
-        elif response.status_code in [401, 403]:
-            error_no_access()
-            return_code = ERRORS['NOT_ALLOWED']
-        elif response.status_code == 404:
-            sys.stdout.write('No credentials on the server, nothing to delete.\n')
-            return_code = ERRORS['NOT_FOUND']
-        else:
-            if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
-                    'message' in response.json().keys()):
-                sys.stderr.write(response.json()['message'] + '\n')
-            else:
-                error_unknown(response.content)
-            return_code = ERRORS['BACKEND_ERROR']
+
+        http_status_code_switcher = {
+            200: _handle_found_delete,
+            401: _handle_no_access,
+            403: _handle_no_access,
+            404: _handle_not_found,
+        }
+
+        handler = http_status_code_switcher.get(
+            response.status_code, _handle_invalid)
+
+        return_code = handler(response)
     except (AbortError, KeyboardInterrupt):
         sys.stderr.write('\nAbort.\n')
-        return_code = ERRORS['ABORT']
+        return_code = ReturnCodes.ABORT
     except AcronError as error:
-        error_unknown(str(error))
-        return_code = ERRORS['BACKEND_ERROR']
+        ServerError.error_unknown(str(error))
+        return_code = ReturnCodes.BACKEND_ERROR
     return return_code
 
 
@@ -104,35 +191,31 @@ def creds_get(parser_args):
     '''
     try:
         response = requests.get(
-            CONFIG['ACRON_SERVER_FULL_URL'] + 'creds/',
+            CONFIG['ACRON_SERVER_FULL_URL'] + Endpoints.CREDS_TRAILING_SLASH,
             auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
-        if response.status_code == 200:
-            sys.stdout.write('Credentials are on the server and valid.\n')
-            return_code = ERRORS['OK']
-        elif response.status_code in [401, 403]:
-            error_no_access()
-            return_code = ERRORS['NOT_ALLOWED']
-        elif response.status_code == 500:
-            error_creds_expired()
-            return_code = ERRORS['CREDS_INVALID']
-        else:
-            if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
-                    'message' in response.json().keys()):
-                sys.stderr.write(response.json()['message'] + '\n')
-                return_code = ERRORS['NO_VALID_CREDS']
-            else:
-                error_unknown(response.content)
-                return_code = ERRORS['BACKEND_ERROR']
+
+        http_status_code_switcher = {
+            200: _handle_found_get,
+            401: _handle_no_access,
+            403: _handle_no_access,
+            404: _handle_not_found,
+            500: _handle_internal_error
+        }
+
+        handler = http_status_code_switcher.get(
+            response.status_code, _handle_invalid_get)
+
+        return_code = handler(response)
     except (AbortError, KeyboardInterrupt):
         sys.stderr.write('\nAbort.\n')
-        return_code = ERRORS['ABORT']
+        return_code = ReturnCodes.ABORT
     except AcronError as error:
-        error_unknown(str(error))
-        return_code = ERRORS['BACKEND_ERROR']
+        ServerError.error_unknown(str(error))
+        return_code = ReturnCodes.BACKEND_ERROR
     return return_code
 
 
-# pylint: disable=R0912, R0915
+# pylint: disable=R0912, R0915, too-many-locals
 def creds_put(parser_args):
     '''
     Create, update or upload credentials request to the API.
@@ -140,19 +223,21 @@ def creds_put(parser_args):
     :param parser_args: dictionary containing the user input from the parser
     :returns:           the API's return value
     '''
-    return_code = ERRORS['OK']
+    return_code = ReturnCodes.OK
     username = get_current_user()
     try:
         if parser_args.file:
             if not os.path.isfile(parser_args.file):
-                sys.stderr.write('The file ' + parser_args.file + ' does not exist!\n')
+                sys.stderr.write(
+                    'The file ' + parser_args.file + ' does not exist!\n')
                 sys.stderr.write('Please verify your entry and try again.')
                 raise ValueError
             creds_file = parser_args.file
         elif parser_args.generate:
             sys.stdout.write('Where do you want to save the keytab on disk ')
             sys.stdout.write('(press Enter to confirm or enter new path)?\n')
-            default_path = os.path.expandvars(os.path.expanduser(CONFIG['KEYTAB_DEFAULT_PATH']))
+            default_path = os.path.expandvars(
+                os.path.expanduser(CONFIG['KEYTAB_DEFAULT_PATH']))
             default_path += "/" + username + '.keytab'
             answer = input('(' + default_path + ') ')
             if answer == '':
@@ -160,7 +245,8 @@ def creds_put(parser_args):
             else:
                 creds_file = answer
             if not os.path.isdir(os.path.abspath(os.path.join(creds_file, os.pardir))):
-                sys.stderr.write('Parent folder does not exist, please create it first.\n')
+                sys.stderr.write(
+                    'Parent folder does not exist, please create it first.\n')
                 raise AbortError
             if os.path.isfile(creds_file):
                 sys.stdout.write('A file with the same name already exists. ')
@@ -168,7 +254,8 @@ def creds_put(parser_args):
                 if answer in ['y', 'yes']:
                     os.remove(creds_file)
                 elif answer in ['n', 'no', '']:
-                    sys.stderr.write('OK, so we will add credentials to the existing keytab file...\n')#pylint: disable=line-too-long
+                    sys.stderr.write(
+                        'OK, so we will add credentials to the existing keytab file...\n')
                 else:
                     sys.stderr.write('Please provide a valid answer.\n')
                     raise ValueError
@@ -179,16 +266,22 @@ def creds_put(parser_args):
             else:
                 realms.append(CONFIG['DOMAIN'].upper())
             for realm in realms:
-                sys.stderr.write('Generating keytab entry for principal %s@%s\n' % (username, realm))#pylint: disable=line-too-long
+                sys.stderr.write('Generating keytab entry for principal %s@%s\n' %
+                                 (username, realm))
                 keytab_generator(username, realm, CONFIG['KEYTAB_ENCRYPTION_TYPES'], creds_file,
                                  flavor=CONFIG['KRB_CLIENTS_FLAVOR'],
-                                 script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)#pylint: disable=line-too-long
-            sys.stdout.write('Keytab successfully created at ' + os.path.expanduser(creds_file) + '\n')
+                                 script=CONFIG['CUSTOM_KEYTAB_GENERATOR'] if 'CUSTOM_KEYTAB_GENERATOR' in CONFIG else None)  # pylint: disable=line-too-long
+            sys.stdout.write('Keytab successfully created at ' +
+                             os.path.expanduser(creds_file) + '\n')
         krb_init_keytab(creds_file, username)
-        sys.stdout.write(' +=====+ ' + 'Your credentials are ready to be sent to the Acron server. \n')#pylint: disable=line-too-long
-        sys.stdout.write(' |  I  | ' + 'Please be aware that you are delegating your credentials \n')#pylint: disable=line-too-long
-        sys.stdout.write(' |  I  | ' + 'to the Acron service. By doing so, you authorize the \n')#pylint: disable=line-too-long
-        sys.stdout.write(' |  .  | ' + 'Acron service to impersonate you during the execution of \n')#pylint: disable=line-too-long
+        sys.stdout.write(
+            ' +=====+ ' + 'Your credentials are ready to be sent to the Acron server. \n')
+        sys.stdout.write(
+            ' |  I  | ' + 'Please be aware that you are delegating your credentials \n')
+        sys.stdout.write(
+            ' |  I  | ' + 'to the Acron service. By doing so, you authorize the \n')
+        sys.stdout.write(
+            ' |  .  | ' + 'Acron service to impersonate you during the execution of \n')
         sys.stdout.write(' +=====+ ' + 'tasks scheduled for this account. \n')
         answer = input('Do you agree to those terms? [y/N] ')
         if answer in ['y', 'yes']:
@@ -200,15 +293,18 @@ def creds_put(parser_args):
             raise ValueError
 
         if not gpg_key_exist(CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME']):
-            sys.stdout.write('It looks like the acron public GPG key has not yet ')
+            sys.stdout.write(
+                'It looks like the acron public GPG key has not yet ')
             sys.stdout.write('been added to your keyring.\n')
             valid_answers = ['y', 'yes', 'n', 'no', '']
             answer = 'not valid'
             while answer not in valid_answers:
                 answer = input('Add it now? [y/N] ')
                 if answer.lower() in ['y', 'yes']:
-                    sys.stdout.write('Adding the acron public key in your gnupg keyring...')
-                    gpg_add_public_key(CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_PATH'])#pylint: disable=line-too-long
+                    sys.stdout.write(
+                        'Adding the acron public key in your gnupg keyring...')
+                    gpg_add_public_key(
+                        CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_PATH'])
                     sys.stdout.write('Key successfully added\n')
                 elif answer.lower() in ['n', 'no', '']:
                     raise AbortError
@@ -216,63 +312,71 @@ def creds_put(parser_args):
         temp_dir = mkdtemp()
         creds_file_encrypted = os.path.join(temp_dir, 'keytab.gpg')
         sys.stdout.write('Encrypting credentials file... ')
-        gpg_encrypt_file(creds_file, creds_file_encrypted, CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])#pylint: disable=line-too-long
+        gpg_encrypt_file(creds_file, creds_file_encrypted,
+                         CONFIG['GPG_BINARY_PATH'], CONFIG['GPG_PUBLIC_KEY_NAME'])
         sys.stdout.write('Credentials file successfully encrypted\n')
         files = {'keytab': open(creds_file_encrypted, 'rb')}
         sys.stdout.write('Sending credentials file to the server...\n')
         response = requests.put(
-            CONFIG['ACRON_SERVER_FULL_URL'] + 'creds/', files=files,
+            CONFIG['ACRON_SERVER_FULL_URL'] + Endpoints.CREDS_TRAILING_SLASH, files=files,
             auth=HTTPSPNEGOAuth(), verify=CONFIG['SSL_CERTS'])
-        if response.status_code == 200:
-            sys.stdout.write('Credentials successfully uploaded to the server.\n')
-        elif response.status_code in [401, 403]:
-            error_no_access()
-            return_code = ERRORS['NOT_ALLOWED']
-        else:
-            if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
-                    'message' in response.json().keys()):
-                sys.stderr.write(response.json()['message'] + '\n')
-            else:
-                error_unknown(response.content)
-            return_code = ERRORS['BACKEND_ERROR']
+
+        http_status_code_switcher = {
+            200: _handle_found_put,
+            401: _handle_no_access,
+            403: _handle_no_access,
+            404: _handle_not_found,
+        }
+
+        handler = http_status_code_switcher.get(
+            response.status_code, _handle_invalid)
+
+        return_code = handler(response)
 
     except OSError as error:
         if error.errno == errno.ENOENT:
             pass
         else:
-            sys.stderr.write('File already exists and can not be deleted. ' + str(error) + '\n')
-            return_code = ERRORS['BACKEND_ERROR']
+            sys.stderr.write(
+                'File already exists and can not be deleted. ' + str(error) + '\n')
+            return_code = ReturnCodes.BACKEND_ERROR
     except KTUtilError as error:
         sys.stderr.write('Error in keytab creation: ' + str(error) + '\n')
         sys.stderr.write('This can be caused by:\n')
-        sys.stderr.write('  * a ktutil version not supporting salted encryption types (eg on RHEL7/CentOS7)\n')#pylint: disable=line-too-long
+        sys.stderr.write(
+            '  * a ktutil version not supporting salted encryption types (e.g. on RHEL7/CentOS7)\n')
         sys.stderr.write('  * a mistyped password\n')
         sys.stderr.write('  * something else\n')
-        sys.stderr.write('If the problem persists, please inform the service managers.\n')
-        return_code = ERRORS['BACKEND_ERROR']
+        sys.stderr.write(
+            'If the problem persists, please inform the service managers.\n')
+        return_code = ReturnCodes.BACKEND_ERROR
     except KinitError as error:
         sys.stderr.write('Error in keytab verification: ' + str(error) + '\n')
         sys.stderr.write('This can be caused by:\n')
-        sys.stderr.write('  * a ktutil version not supporting salted encryption types (eg on RHEL7/CentOS7)\n')#pylint: disable=line-too-long
+        sys.stderr.write(
+            '  * a ktutil version not supporting salted encryption types (e.g. on RHEL7/CentOS7)\n')
         sys.stderr.write('  * a mistyped password\n')
-        sys.stderr.write('Check if you entered the correct password or retry on a more recent OS.\n')#pylint: disable=line-too-long
-        return_code = ERRORS['BAD_ARGS']
+        sys.stderr.write(
+            'Check if you entered the correct password or retry on a more recent OS.\n')
+        return_code = ReturnCodes.BAD_ARGS
     except GPGError as error:
-        sys.stderr.write('Error whilst encyphering your credentials file: ' + str(error) + '\n')
-        sys.stderr.write('Please try again or raise a ticket towards the Acron\n')
+        sys.stderr.write(
+            'Error whilst encyphering your credentials file: ' + str(error) + '\n')
+        sys.stderr.write(
+            'Please try again or raise a ticket towards the Acron\n')
         sys.stderr.write('service if the error persists.\n')
-        return_code = ERRORS['BACKEND_ERROR']
+        return_code = ReturnCodes.BACKEND_ERROR
     except ValueError:
-        return_code = ERRORS['BAD_ARGS']
+        return_code = ReturnCodes.BAD_ARGS
     except (AbortError, KeyboardInterrupt):
         sys.stderr.write('\nAbort.\n')
     except AcronError as error:
-        error_unknown(str(error))
-        return_code = ERRORS['BACKEND_ERROR']
+        ServerError.error_unknown(str(error))
+        return_code = ReturnCodes.BACKEND_ERROR
     finally:
         try:
             rmtree(temp_dir)
         except NameError:
-            pass # exception occurred before temp_dir was assigned
+            pass  # exception occurred before temp_dir was assigned
 
     return return_code
