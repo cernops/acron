@@ -1,8 +1,24 @@
+# (C) Copyright 2021 CERN
+#
+# This software is distributed under the terms of the GNU General Public Licence version 3
+# (GPL Version 3), copied verbatim in the file "COPYING" /copied verbatim below.
+#
+# In applying this licence, CERN does not waive the privileges and immunities granted to it
+# by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+#
 """
   Checking the regular expressions
 """
+
+__author__ = 'Ulrich Schwickerath (CERN)'
+__credits__ = ['Ulrich Schwickerath (CERN)']
+__maintainer__ = 'Ulrich Schwickerath (CERN)'
+__email__ = 'ulrich.schwickerath@cern.ch'
+__status__ = 'Development'
+
 import sys
-from acron.utils import check_schedule # pylint: disable=import-error
+from acron.utils import check_schedule  # pylint: disable=import-error
+
 
 def check_expressions():
     """ Validates several regex"""

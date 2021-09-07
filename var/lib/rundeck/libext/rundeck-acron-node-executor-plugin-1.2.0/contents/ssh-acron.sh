@@ -35,6 +35,6 @@ shift
 CMD=$*
 
 # random delay (0..1s) to make it work with parallel exec
-sleep "$(bc <<< "scale=2; $(printf '0.%02d' $(( RANDOM % 100)))")"
+sleep "$(bc <<<"scale=2; $(printf '0.%02d' $((RANDOM % 100)))")"
 
 sudo -u acron /usr/libexec/acron/ssh_run "$JOB_ID" "$USER" "$HOST" "$CMD"

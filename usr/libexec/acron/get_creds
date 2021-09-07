@@ -16,7 +16,7 @@ import os
 import sys
 import pkg_resources
 import yaml
-from acron.errors import ERRORS
+from acron.constants import ReturnCodes
 from acron.exceptions import CredsNoFileError, GPGError
 from acron.utils import gpg_decrypt_file
 
@@ -26,7 +26,8 @@ with open(os.path.join(CONFIG['CREDS']['CONFIG'], 'file.config'), 'r') as config
     CONFIG['CREDS'].update(yaml.safe_load(config_file))
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -40,8 +41,9 @@ def get_creds(username):
     :returns:        OK if creds are available, NO_VALID_CREDS if no valid creds are found, BACKEND_ERROR else
     '''
     creds_file = os.path.join(CONFIG['CREDS']['CACHE'], username + '.keytab')
-    creds_file_encrypted = os.path.join(CONFIG['CREDS']['LOCATION'], username + '.keytab.gpg')
-    status_code = ERRORS['OK']
+    creds_file_encrypted = os.path.join(
+        CONFIG['CREDS']['LOCATION'], username + '.keytab.gpg')
+    status_code = ReturnCodes.OK
     try:
         if not os.path.isfile(creds_file_encrypted):
             if os.path.isfile(creds_file):
@@ -57,18 +59,21 @@ def get_creds(username):
         sys.stdout.write(creds_file)
 
     except CredsNoFileError:
-        sys.stderr.write('No valid credentials were found, please upload new ones.' + '\n')
-        status_code = ERRORS['NO_VALID_CREDS']
+        sys.stderr.write(
+            'No valid credentials were found, please upload new ones.' + '\n')
+        status_code = ReturnCodes.NO_VALID_CREDS
     except GPGError as error:
-        sys.stderr.write('Could not decypher the credentials: ' + str(error) + '\n')
-        status_code = ERRORS['BACKEND_ERROR']
+        sys.stderr.write(
+            'Could not decypher the credentials: ' + str(error) + '\n')
+        status_code = ReturnCodes.BACKEND_ERROR
 
     return status_code
 
 
 def main():
     '''return the credentials'''
-    parser = argparse.ArgumentParser(prog='get_creds', description='Acron credential getter.')
+    parser = argparse.ArgumentParser(
+        prog='get_creds', description='Acron credential getter.')
     parser.add_argument(
         '-v', '--version', action='version',
         version=pkg_resources.require('acron')[0].version)
@@ -76,6 +81,7 @@ def main():
     args = parser.parse_args()
 
     return get_creds(args.username)
+
 
 if __name__ == "__main__":
     sys.exit(main())

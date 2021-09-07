@@ -12,17 +12,19 @@
 import logging
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import login_required
-from acron.errors import ERRORS
-from acron.utils import check_schedule, check_target, check_command, check_description
+from acron.utils import (check_schedule, check_target,
+                         check_command, check_description, check_job_id)
 from acron.server.http import http_response
 from acron.exceptions import (NoAccessError, NotFoundError, NotShareableError,
-                              ProjectNotFoundError, SchedulerError)
+                              ProjectNotFoundError, SchedulerError, ArgsMalformedError)
 from acron.server.utils import (
-    default_log_line_request, dump_args,
-    get_remote_hostname, ldap_groups_expansion)
+    default_log_line_request, dump_args)
+from acron.constants import Endpoints, ReturnCodes
+from .utils import setup_scheduler
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -32,19 +34,22 @@ __status__ = 'Development'
 BP_JOBS = Blueprint('jobs', __name__)
 
 
+# pylint: disable=too-many-arguments
 @dump_args
-def create_job(scheduler=None, schedule=None, target=None, command=None, description=None):
+def create_job(job_id=None, scheduler=None, schedule=None, target=None, command=None, description=None):
     '''
     Forward a new job creation request to the backend.
 
     :param scheduler:   the scheduler backend
     :param schedule:    the schedule of the new job, crontab format
     :param target:      the node on which the job will be executed, FQDN
-    :param command:     the command to launch on the target at the given schedul
+    :param command:     the command to launch on the target at the given schedule
     :param description: an optional description of the job
     :returns:           an HTTP payload
     '''
     try:
+        if job_id is not None:
+            check_job_id(job_id)
         if schedule is not None:
             check_schedule(schedule)
         if target is not None:
@@ -55,16 +60,20 @@ def create_job(scheduler=None, schedule=None, target=None, command=None, descrip
             description = 'No description given'
         else:
             check_description(description)
-        response = scheduler.create_job(schedule, target, command, description)
+        response = scheduler.create_job(
+            job_id, schedule, target, command, description)
     except SchedulerError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
     except AssertionError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['USER_ERROR'])
+        return http_response(ReturnCodes.USER_ERROR)
     except TypeError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
+    except ArgsMalformedError as error:
+        logging.error('%s on /jobs/: %s', default_log_line_request(), error)
+        return http_response(ReturnCodes.BAD_ARGS)
     return jsonify(response)
 
 
@@ -79,9 +88,12 @@ def modify_all_jobs_meta(scheduler, meta):
     '''
     try:
         response = scheduler.modify_all_jobs_meta(meta)
+    except ProjectNotFoundError as error:
+        logging.error('%s on /jobs/: %s', default_log_line_request(), error)
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -97,10 +109,10 @@ def get_all_jobs(scheduler):
         response = scheduler.get_jobs()
     except NotFoundError as error:
         logging.warning('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -116,10 +128,10 @@ def delete_all_jobs(scheduler):
         response = scheduler.delete_jobs()
     except NotFoundError as error:
         logging.warning('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -138,18 +150,29 @@ def update_job(scheduler, job_id, schedule, target, command, description):
     :returns:         an HTTP payload
     '''
     try:
+        if job_id is not None:
+            check_job_id(job_id)
         if schedule is not None:
             check_schedule(schedule)
-        response = scheduler.update_job(job_id, schedule, target, command, description)
+        if target is not None:
+            check_target(target)
+        if command is not None:
+            check_command(command)
+        if description is not None:
+            check_description(description)
+        response = scheduler.update_job(
+            job_id, schedule, target, command, description)
     except AssertionError as error:
         logging.error('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['USER_ERROR'])
+        return http_response(ReturnCodes.USER_ERROR)
     except NotFoundError:
-        logging.warning('%s on /jobs/: Job %s does not exist.', default_log_line_request(), job_id)
-        return http_response(ERRORS['NOT_FOUND'])
+        logging.warning('%s on /jobs/: Job %s does not exist.',
+                        default_log_line_request(), job_id)
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
-        logging.error('%s on /jobs/%s: %s', default_log_line_request(), job_id, error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        logging.error('%s on /jobs/%s: %s',
+                      default_log_line_request(), job_id, error)
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -167,10 +190,11 @@ def modify_job_meta(scheduler, job_id, meta):
         response = scheduler.modify_job_meta(job_id, meta)
     except NotFoundError as error:
         logging.warning('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
-        logging.error('%s on /jobs/%s: %s', default_log_line_request(), job_id, error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        logging.error('%s on /jobs/%s: %s',
+                      default_log_line_request(), job_id, error)
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -187,10 +211,11 @@ def get_job(scheduler, job_id):
         response = scheduler.get_job(job_id)
     except NotFoundError as error:
         logging.warning('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
-        logging.error('%s on /jobs/%s: %s', default_log_line_request(), job_id, error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        logging.error('%s on /jobs/%s: %s',
+                      default_log_line_request(), job_id, error)
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -207,80 +232,12 @@ def delete_job(scheduler, job_id):
         response = scheduler.delete_job(job_id)
     except NotFoundError as error:
         logging.warning('%s on /jobs/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
     except SchedulerError as error:
-        logging.error('%s on /jobs/%s: %s', default_log_line_request(), job_id, error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        logging.error('%s on /jobs/%s: %s',
+                      default_log_line_request(), job_id, error)
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
-
-
-@dump_args
-def get_scheduler_class():
-    '''
-    Check the config and returns the corresponding scheduler class.
-
-    :raises ValueError: if the scheduler in the config is not a supported one
-    :returns:           the scheduler class
-    '''
-    if current_app.config['SCHEDULER']['TYPE'] == 'Rundeck':
-        from acron.server.backend.scheduler.rundeck import Rundeck
-        scheduler_class = Rundeck
-    elif current_app.config['SCHEDULER']['TYPE'] == 'Nomad':
-        from acron.server.backend.scheduler.nomad import Nomad
-        scheduler_class = Nomad
-    elif current_app.config['SCHEDULER']['TYPE'] == 'Crontab':
-        from acron.server.backend.scheduler.crontab import Crontab
-        scheduler_class = Crontab
-    else:
-        logging.warning('User %s (%s) requests %s scheduler backend: backend not implemented.',
-                        request.remote_user, get_remote_hostname(),
-                        current_app.config['SCHEDULER']['TYPE'])
-        raise ValueError('Only scheduler backends currently supported are: Rundeck, Nomad and Crontab')
-
-    return scheduler_class
-
-
-@dump_args
-def check_shared_project_access(user, project, scheduler_class):
-    '''
-    Performs an ACL lookup to dertermine is a particular user can access a shared project.
-
-    :raises NoAccessError:    if the user is not authorized
-    :raises NotShareableError: if the project is not shareable
-    :returns:                 a Scheduler object initialized with the shared project
-    '''
-    scheduler = scheduler_class(project, current_app.config)
-    if scheduler.is_shareable():
-        users_with_access_to_project = ldap_groups_expansion(
-            'acron-' + project)
-        if user not in users_with_access_to_project:
-            logging.warning('%s on /jobs/: project %s is shareable, but user %s not in e-group members %s.',
-                            default_log_line_request(), project, user, users_with_access_to_project)
-            raise NoAccessError
-    else:
-        logging.warning('%s on /jobs/: project %s is not shareable.',
-                        default_log_line_request(), project)
-        raise NotShareableError
-    return scheduler
-
-
-@dump_args
-def setup_scheduler():
-    '''
-    Instantiate the Scheduler class based on the config.
-
-    :returns: a Scheduler instance
-    '''
-    scheduler_class = get_scheduler_class()
-    if 'project' in request.args and request.args.get('project') != request.remote_user:
-        scheduler = check_shared_project_access(
-            request.remote_user,
-            request.args.get('project'),
-            scheduler_class)
-    else:
-        scheduler = scheduler_class(request.remote_user, current_app.config)
-
-    return scheduler
 
 
 #pylint: disable=R0911
@@ -294,11 +251,11 @@ def jobs():
     DELETE: delete all the jobs in the project
     '''
     try:
-        scheduler = setup_scheduler()
+        scheduler = setup_scheduler(Endpoints.JOBS)
     except (NoAccessError, NotShareableError):
-        return http_response(ERRORS['NOT_ALLOWED'])
+        return http_response(ReturnCodes.NOT_ALLOWED)
     except ProjectNotFoundError:
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
 
     logging.info('%s on /jobs/.', default_log_line_request())
 
@@ -306,12 +263,14 @@ def jobs():
         if 'schedule' not in request.args or \
            'target' not in request.args or \
            'command' not in request.args:
-            logging.warning('%s on /jobs/: Missing arguments.', default_log_line_request())
+            logging.warning('%s on /jobs/: Missing arguments.',
+                            default_log_line_request())
             logging.debug('%s on /jobs/: schedule: "%s", target: "%s", command: "%s"',
                           default_log_line_request(), str(request.args.get('schedule')),
                           str(request.args.get('target')), str(request.args.get('command')))
-            return http_response(ERRORS['BAD_ARGS'])
+            return http_response(ReturnCodes.BAD_ARGS)
 
+        job_id = request.args.get('job_id')
         schedule = request.args.get('schedule')
         target = request.args.get('target')
         command = request.args.get('command')
@@ -320,7 +279,7 @@ def jobs():
         logging.info('schedule: %s, target: %s, command: %s, description: %s',
                      schedule, target, command, description)
 
-        return create_job(scheduler, schedule, target, command, description)
+        return create_job(job_id, scheduler, schedule, target, command, description)
 
     if request.method == 'PATCH':
         return modify_all_jobs_meta(scheduler, request.args)
@@ -331,7 +290,8 @@ def jobs():
     if request.method == 'DELETE':
         return delete_all_jobs(scheduler)
 
-    logging.critical('%s on /jobs/: Method not allowed!', default_log_line_request())
+    logging.critical('%s on /jobs/: Method not allowed!',
+                     default_log_line_request())
     raise ValueError('Critical error: method not allowed!')
 
 
@@ -348,13 +308,13 @@ def named_job(job_id):
     if job_id == '' or len(job_id) > current_app.config['JOB_ID_MAX_LENGTH']:
         logging.warning('%s on /jobs/%s: job_id empty or too long.',
                         default_log_line_request(), job_id)
-        return http_response(ERRORS['BAD_ARGS'])
+        return http_response(ReturnCodes.BAD_ARGS)
     try:
-        scheduler = setup_scheduler()
+        scheduler = setup_scheduler(Endpoints.JOBS)
     except (NoAccessError, NotShareableError):
-        return http_response(ERRORS['NOT_ALLOWED'])
+        return http_response(ReturnCodes.NOT_ALLOWED)
     except ProjectNotFoundError:
-        return http_response(ERRORS['NOT_FOUND'])
+        return http_response(ReturnCodes.NOT_FOUND)
 
     logging.info('%s on /jobs/%s.', default_log_line_request(), job_id)
 
@@ -363,12 +323,14 @@ def named_job(job_id):
            not 'target' in request.args and \
            not 'command' in request.args and \
            not 'description' in request.args:
-            logging.warning('%s on /jobs/%s: Missing arguments.', default_log_line_request(), job_id)
+            logging.warning('%s on /jobs/%s: Missing arguments.',
+                            default_log_line_request(), job_id)
             logging.debug('%s on /jobs/: schedule: %s, target: %s, command: %s, description: %s',
                           default_log_line_request(), str(request.args.get('schedule')),
-                          str(request.args.get('target')), str(request.args.get('command')),
+                          str(request.args.get('target')), str(
+                              request.args.get('command')),
                           str(request.args.get('description')))
-            return http_response(ERRORS['BAD_ARGS'])
+            return http_response(ReturnCodes.BAD_ARGS)
 
         schedule = request.args.get('schedule')
         target = request.args.get('target')
@@ -389,5 +351,6 @@ def named_job(job_id):
     if request.method == 'DELETE':
         return delete_job(scheduler, job_id)
 
-    logging.critical('%s on /jobs/%s: Method not allowed!', default_log_line_request(), job_id)
+    logging.critical('%s on /jobs/%s: Method not allowed!',
+                     default_log_line_request(), job_id)
     raise ValueError('Critical error: method not allowed!')

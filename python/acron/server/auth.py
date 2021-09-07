@@ -13,13 +13,16 @@ import logging
 import memcache
 
 __author__ = 'Ulrich Schwickerath (CERN)'
-__credits__ = ['Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Ulrich Schwickerath (CERN)'
-__email__ = 'Ulrich.Schwickerath@cern.ch'
+__credits__ = ['Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
+
 
 class UserAuth():
     ''' store session info and interface with memcached '''
+
     def __init__(self, config):
         ''' initialise class'''
         self.config = config
@@ -45,7 +48,8 @@ class UserAuth():
 
     def setauth(self, username, timestamp):
         ''' set auth timestamp '''
-        logging.debug("Setting auth for user %s to timestamp %s", username, str(timestamp))
+        logging.debug("Setting auth for user %s to timestamp %s",
+                      username, str(timestamp))
         self._user_is_authenticated[username] = timestamp
         self.memcache_client.set(username, timestamp, time=self.ttl)
 

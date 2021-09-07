@@ -11,16 +11,17 @@
 
 import logging
 from flask import Blueprint, current_app, jsonify, request
-from acron.errors import ERRORS
+from acron.constants import ReturnCodes
 from acron.exceptions import SchedulerError
 from acron.server.http import http_response
 from acron.server.utils import default_log_line_request, dump_args
-from .jobs import get_scheduler_class
+from .utils import get_scheduler_class
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)']
-__maintainer__ = 'Philippe Ganz (CERN)'
-__email__ = 'philippe.ganz@cern.ch'
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
+__maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
+__email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
 
@@ -40,7 +41,7 @@ def backend_status(scheduler):
         response = scheduler.backend_status(current_app.config)
     except SchedulerError as error:
         logging.error('%s on /system/: %s', default_log_line_request(), error)
-        return http_response(ERRORS['BACKEND_ERROR'])
+        return http_response(ReturnCodes.BACKEND_ERROR)
     return jsonify(response)
 
 
@@ -56,5 +57,6 @@ def system():
     if request.method == 'GET':
         return backend_status(scheduler_class)
 
-    logging.critical('%s on /system/: Method not allowed!', default_log_line_request())
+    logging.critical('%s on /system/: Method not allowed!',
+                     default_log_line_request())
     raise ValueError('Critical error: method not allowed!')

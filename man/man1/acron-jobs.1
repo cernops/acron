@@ -1,6 +1,6 @@
 .\" Manpage for acron.
 .\" Contact acron-devs@cern.ch to report errors or typos.
-.TH ACRON-JOBS 1 "27/02/2020" "Acron 0.10.2" "Acron Manual"
+.TH ACRON-JOBS 1 "01/09/2021" "Acron 0.14.0" "Acron Manual"
 
 .SH NAME
 acron-jobs \- Manage jobs on the server
@@ -24,6 +24,7 @@ If you want to have your project manageable by a group, please make a request to
 .B create
 .RS 4
 Create a new job. Naming convention is jobXXXXXX and increments every time a new job is created.
+The job output is delivered via email.
 .PP
 Three arguments are needed to be able to create a job
 .TP 4
@@ -36,7 +37,12 @@ The node on which the job will be executed.
 .B -c --command CMD
 The command to launch, quoted.
 .PP
-Optionally you can provide a comment for the job.
+Optionally, you can provide a fixed name for the job.
+.TP 4
+.B -j, --job_id JOB_ID
+The name of the job to create.
+.PP
+Optionally, you can provide a comment for the job.
 .TP 4
 .B -d, --description DESCR
 A description that will be displayed when the job is shown.
@@ -74,6 +80,9 @@ There are two options here, either show the definition of a single job or see al
 .TP 4
 .B -j, --job_id JOB_ID
 The name of the job to show.
+.TP 4
+.B -a, --all
+Show all jobs.
 .RE
 .PP
 .B delete
@@ -85,7 +94,7 @@ There are two options here, either delete a single job or delete all jobs.
 .B -j, --job_id JOB_ID
 The name of the job to delete.
 .TP 4
-.B -a, -all
+.B -a, --all
 Delete all jobs.
 .PP
 .B enable
@@ -97,7 +106,7 @@ There are two options here, either enable a single job or enable all jobs.
 .B -j, --job_id JOB_ID
 The name of the job to enable.
 .TP 4
-.B -a, -all
+.B -a, --all
 Enable all jobs.
 .RE
 .PP
@@ -110,7 +119,7 @@ There are two options here, either disable a single job or disable all jobs.
 .B -j, --job_id JOB_ID
 The name of the job to disable.
 .TP 4
-.B -a, -all
+.B -a, --all
 Disable all jobs.
 .RE
 .PP
@@ -136,7 +145,7 @@ The requested resource could not be found.
 Unknown issue with the backend.
 .TP 4
 .B 7
-User error, eg wrong format.
+User error, e.g. wrong format.
 .TP 4
 .B 8
 Aborted operation.
@@ -165,4 +174,4 @@ acron(1), acron-creds(1)
 No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
 
 .SH AUTHOR
-Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch)
+Philippe Ganz (philippe.ganz@cern.ch), Ulrich Schwickerath (ulrich.schwickerath@cern.ch), Rodrigo Bermudez Schettino (rodrigo.bermudez.schettino@cern.ch)

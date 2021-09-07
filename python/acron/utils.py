@@ -12,11 +12,13 @@
 import os
 import getpass
 import re
+import logging
 from subprocess import Popen, PIPE
 from acron.exceptions import GPGError, KdestroyError, KlistError, KinitError, KTUtilError
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -39,7 +41,7 @@ def fqdnify(hostname, domain):
 
 def get_current_user():
     '''
-    Restrieve the user currently running the shell
+    Retrieve the user currently running the shell
 
     :returns: the current user
     '''
@@ -54,12 +56,13 @@ def gpg_key_exist(gpg_binary, key_name):
     :param key_name:   name of the acron key to use
     :returns:          a boolean
     '''
-    process = Popen([gpg_binary, '--list-keys', key_name],
-                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    process.communicate()
-    if process.returncode != 0:
-        return False
-    return True
+    with Popen([gpg_binary, '--list-keys', key_name],
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+
+        process.communicate()
+        if process.returncode != 0:
+            return False
+        return True
 
 
 def gpg_add_public_key(gpg_binary, key_path):
@@ -70,11 +73,11 @@ def gpg_add_public_key(gpg_binary, key_path):
     :param key_path:   path to the key to import
     :raises GPGError:  if the import fails
     '''
-    process = Popen([gpg_binary, '--import', key_path],
-                    stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate()
-    if process.returncode != 0:
-        raise GPGError(err)
+    with Popen([gpg_binary, '--import', key_path],
+               stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate()
+        if process.returncode != 0:
+            raise GPGError(err)
 
 
 def gpg_encrypt_file(raw_file, result, gpg_binary, key_name):
@@ -87,14 +90,14 @@ def gpg_encrypt_file(raw_file, result, gpg_binary, key_name):
     :param key_name:   name of the acron key to use
     :raises GPGError:  if the encryption fails
     '''
-    process = Popen([gpg_binary, '--yes', '--batch', '--always-trust',
-                     '--recipient', key_name,
-                     '--output', result,
-                     '--encrypt', raw_file],
-                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate()
-    if process.returncode != 0:
-        raise GPGError(err)
+    with Popen([gpg_binary, '--yes', '--batch', '--always-trust',
+                '--recipient', key_name,
+                '--output', result,
+                '--encrypt', raw_file],
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate()
+        if process.returncode != 0:
+            raise GPGError(err)
 
 
 def gpg_decrypt_file(encrypted_file, result, gpg_binary, gpg_home, gpg_passphrase_file):
@@ -108,15 +111,16 @@ def gpg_decrypt_file(encrypted_file, result, gpg_binary, gpg_home, gpg_passphras
     :param gpg_passphrase_file: path to the file containing the private key passphrase
     :raises GPGError:           if the decryption fails
     '''
-    process = Popen([gpg_binary, '--batch',
-                     '--homedir', gpg_home,
-                     '--passphrase-file', gpg_passphrase_file,
-                     '--output', result,
-                     '--decrypt', encrypted_file],
-                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate()
-    if process.returncode != 0:
-        raise GPGError(err)
+    with Popen([gpg_binary, '--batch',
+                '--homedir', gpg_home,
+                '--passphrase-file', gpg_passphrase_file,
+                '--output', result,
+                '--decrypt', encrypted_file],
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate()
+        if process.returncode != 0:
+            raise GPGError(err)
+
 
 def find_salt_mit(user, realm, password):
     '''
@@ -131,14 +135,16 @@ def find_salt_mit(user, realm, password):
     cachefile = "/tmp/krb5cc_"+user+"_"+realm
     execenv["KRB5_TRACE"] = '/dev/stdout'
     execenv["KRB5CCNAME"] = cachefile
-    process = Popen(['kinit', user + '@' + realm],
-                    universal_newlines=True,
-                    stdout=PIPE,
-                    stderr=PIPE,
-                    stdin=PIPE, env=execenv)
-    out, err = process.communicate(input=password)
-    if process.returncode != 0:
-        raise KinitError(err)
+
+    with Popen(['kinit', user + '@' + realm],
+               universal_newlines=True,
+               stdout=PIPE,
+               stderr=PIPE,
+               stdin=PIPE, env=execenv) as process:
+        out, err = process.communicate(input=password)
+        if process.returncode != 0:
+            raise KinitError(err)
+
     saltcheck = re.compile(r'salt "(.*)", ')
     salt = None
     for line in out.split("\n"):
@@ -147,6 +153,7 @@ def find_salt_mit(user, realm, password):
             salt = saltmatch[1]
     os.unlink(cachefile)
     return salt
+
 
 def find_kvno_mit(user, realm):
     '''
@@ -158,16 +165,18 @@ def find_kvno_mit(user, realm):
     '''
     kvno = 1
     kvnocheck = re.compile(r'kvno = (\d+)')
-    process = Popen(['kvno', user + '@' + realm],
-                    universal_newlines=True,
-                    stdout=PIPE, stderr=PIPE)
-    out, err = process.communicate() #pylint: disable=unused-variable
-    if process.returncode == 0:
-        for line in out.split("\n"):
-            kvnomatch = kvnocheck.search(line)
-            if kvnomatch is not None:
-                kvno = kvnomatch[1]
+    with Popen(['kvno', user + '@' + realm],
+               universal_newlines=True,
+               stdout=PIPE, stderr=PIPE) as process:
+        out, _ = process.communicate()
+        if process.returncode == 0:
+            for line in out.split("\n"):
+                kvnomatch = kvnocheck.search(line)
+                if kvnomatch is not None:
+                    kvno = kvnomatch[1]
+
     return kvno
+
 
 def keytab_generator_custom(username, realm, enc_types, keytab, script):
     '''
@@ -183,19 +192,24 @@ def keytab_generator_custom(username, realm, enc_types, keytab, script):
     '''
     try:
         password = getpass.getpass('Password for ' + username + ': ')
-    except getpass.GetPassWarning:
-        raise IOError
+    except getpass.GetPassWarning as getpasserr:
+        raise IOError from getpasserr
     # resolve parameters in the command
     for encryption_type in enc_types:
         resolved = re.split(r'\s+',
-                            script.replace("__keytab__", keytab).replace("__username__", username).replace("__realm__", realm).replace("__enctype__", encryption_type))#pylint: disable=line-too-long
-        process = Popen(resolved, universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        stdin=PIPE)
-        _, err = process.communicate(password)
-        if process.returncode != 0:
-            raise KTUtilError(err)
+                            script.replace(
+                                "__keytab__", keytab).replace(
+                                "__username__", username).replace(
+                                "__realm__", realm).replace(
+                                "__enctype__", encryption_type))
+        with Popen(resolved, universal_newlines=True,
+                   stdout=PIPE,
+                   stderr=PIPE,
+                   stdin=PIPE) as process:
+            _, err = process.communicate(password)
+            if process.returncode != 0:
+                raise KTUtilError(err)
+
 
 def keytab_generator_heimdal(username, realm, enc_types, keytab):
     '''
@@ -209,18 +223,19 @@ def keytab_generator_heimdal(username, realm, enc_types, keytab):
     '''
     try:
         password = getpass.getpass('Password for ' + username + ': ')
-    except getpass.GetPassWarning:
-        raise IOError
+    except getpass.GetPassWarning as getpasserr:
+        raise IOError from getpasserr
     for encryption_type in enc_types:
-        process = Popen(['ktutil', '-k', keytab, 'add', '-V', '1', '-e',
-                         encryption_type, username + '@' + realm],
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        stdin=PIPE)
-        _, err = process.communicate(password)
-    if process.returncode != 0:
-        raise KTUtilError(err)
+        with Popen(['ktutil', '-k', keytab, 'add', '-V', '1', '-e',
+                    encryption_type, username + '@' + realm],
+                   universal_newlines=True,
+                   stdout=PIPE,
+                   stderr=PIPE,
+                   stdin=PIPE) as process:
+            _, err = process.communicate(password)
+        if process.returncode != 0:
+            raise KTUtilError(err)
+
 
 def keytab_generator_mit(username, realm, enc_types, keytab):
     '''
@@ -235,8 +250,8 @@ def keytab_generator_mit(username, realm, enc_types, keytab):
     '''
     try:
         password = getpass.getpass('Password for ' + username + ': ')
-    except getpass.GetPassWarning:
-        raise IOError
+    except getpass.GetPassWarning as getpasserr:
+        raise IOError from getpasserr
     if os.path.isfile(keytab):
         ktutil_input = 'rkt ' + keytab + '\n'
     else:
@@ -247,16 +262,20 @@ def keytab_generator_mit(username, realm, enc_types, keytab):
     for encryption_type in enc_types:
         ktutil_input += 'add_entry -password -p ' + username + '@' + realm + ' '
         if salt is None:
-            ktutil_input += '-k '+ str(kvno) + ' -e ' + encryption_type + ' -f \n' + password + '\n'
+            ktutil_input += '-k ' + \
+                str(kvno) + ' -e ' + encryption_type + \
+                ' -f \n' + password + '\n'
         else:
-            ktutil_input += '-k ' + str(kvno) + ' -s ' + salt +' -e ' + encryption_type + '\n' + password + '\n'#pylint: disable=line-too-long
+            ktutil_input += ('-k ' + str(kvno) + ' -s ' + salt + ' -e ' +
+                             encryption_type + '\n' + password + '\n')
         ktutil_input += 'wkt ' + keytab + '\n' + 'exit'
-    process = Popen(['ktutil'], universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate(ktutil_input)
-    if process.returncode != 0:
-        raise KTUtilError(err)
+    with Popen(['ktutil'], universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate(ktutil_input)
+        if process.returncode != 0:
+            raise KTUtilError(err)
 
-def keytab_generator(username, realm, enc_types, result, flavor='MIT', script=None):# pylint: disable=too-many-arguments
+
+def keytab_generator(username, realm, enc_types, result, flavor='MIT', script=None):  # pylint: disable=too-many-arguments
     '''
     Generate a keytab for the given username.
     :param username:     short username to use as Kerberos username
@@ -278,6 +297,7 @@ def keytab_generator(username, realm, enc_types, result, flavor='MIT', script=No
     else:
         keytab_generator_custom(username, realm, enc_types, result, script)
 
+
 def krb_check_keytab_heimdal(keytab):
     '''
     Verifies if a keytab is in a valid format.
@@ -285,12 +305,13 @@ def krb_check_keytab_heimdal(keytab):
     :param keytab:      the keytab to verify
     :raises KlistError: if the keytab is not valid
     '''
-    process = Popen(['ktutil', '-k', keytab, 'list'],
-                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    out, err = process.communicate()
-    if process.returncode != 0:
-        raise KlistError(err)
-    return out
+    with Popen(['ktutil', '-k', keytab, 'list'],
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        out, err = process.communicate()
+        if process.returncode != 0:
+            raise KlistError(err)
+        return out
+
 
 def krb_check_keytab_mit(keytab):
     '''
@@ -299,12 +320,13 @@ def krb_check_keytab_mit(keytab):
     :param keytab:      the keytab to verify
     :raises KlistError: if the keytab is not valid
     '''
-    process = Popen(['klist', '-kt', keytab],
-                    universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    out, err = process.communicate()
-    if process.returncode != 0:
-        raise KlistError(err)
-    return out
+    with Popen(['klist', '-kt', keytab],
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        out, err = process.communicate()
+        if process.returncode != 0:
+            raise KlistError(err)
+        return out
+
 
 def krb_check_keytab(keytab, flavor='MIT'):
     '''
@@ -332,6 +354,7 @@ def krb_check_keytab(keytab, flavor='MIT'):
             pass
     return realms
 
+
 def krb_init_keytab(keytab, principal, cachefile=None):
     '''
     Request a Kerberos TGT with the given keytab and principal.
@@ -341,15 +364,23 @@ def krb_init_keytab(keytab, principal, cachefile=None):
     :raises KinitError: if the initialization failed
     :param cachefile:   the full path to the cache file name to be used
     '''
-    if cachefile is None:
-        process = Popen(['kinit', '-kt', keytab, principal],
-                        universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    else:
-        process = Popen(['kinit', '-kt', keytab, '-c', cachefile, principal],
-                        universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate()
-    if process.returncode != 0:
-        raise KinitError(err)
+    cmd = ['kinit', '-kt', keytab]
+    if cachefile:
+        cmd += ['-c', cachefile]
+        try:
+            logging.debug(
+                f'Trying to remove cachefile located at {cachefile}...')
+            os.unlink(cachefile)
+        except FileNotFoundError as _:
+            logging.debug(
+                f'File {cachefile} doesn\'t exist. It will be automatically created next')
+
+    cmd += [principal]
+
+    with Popen(cmd, universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate()
+        if process.returncode != 0:
+            raise KinitError(err)
 
 
 def krb_destroy(cachefile=None):
@@ -359,15 +390,15 @@ def krb_destroy(cachefile=None):
     :raises KdestroyError: if the destruction failed
     :param cachefile:   the full path to the cache file name to be used
     '''
-    if cachefile is None:
-        process = Popen(['kdestroy', '-q'],
-                        universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    else:
-        process = Popen(['kdestroy', '-q', '-c', cachefile],
-                        universal_newlines=True, stdout=PIPE, stderr=PIPE)
-    _, err = process.communicate()
-    if process.returncode != 0:
-        raise KdestroyError(err)
+    cmd = ['kdestroy', '-q']
+    if cachefile:
+        cmd += ['-c', cachefile]
+
+    with Popen(cmd,
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        _, err = process.communicate()
+        if process.returncode != 0:
+            raise KdestroyError(err)
 
 
 def replace_in_file(pattern, replace, source, destination=None):
@@ -391,8 +422,9 @@ def replace_in_file(pattern, replace, source, destination=None):
             sources.write(re.sub(pattern, replace, line))
     return destination
 
+
 def check_schedule(schedule):
-    """ check the format of the given schedule"""
+    """ check the format of the given schedule """
     sched_fields = schedule.split(' ')
     assert len(sched_fields) == 5
     months = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN",
@@ -403,27 +435,51 @@ def check_schedule(schedule):
     hours = r"[0-1]?\d|2[0-3]"
     day = r"[LW]|\?|0?[1-9]|[1-2]\d|3[01]"
     month = r"0?[1-9]|1[0-2]|"+"|".join(months)
-    day_week = r"[LW]|\?|[0-7]|"+"|".join(weekdays)
+    day_week = r"[LW]|\?|[1-7]|"+"|".join(weekdays)
     basicfield = r"(\*|((%s)(-(%s))?))(\/(0\d|[1-9]\d?))?"
     field = r"(%s)(,(%s))*" % (basicfield, basicfield)
     total = []
     for term in minutes, hours, day, month, day_week:
         total.append(field % (term, term, term, term))
     valid_chars = re.compile(r"^"+r'\s'.join(total)+"$",
-                             re.IGNORECASE) #pylint: disable=no-member
+                             re.IGNORECASE)  # pylint: disable=no-member
     assert valid_chars.match(schedule)
+
 
 def check_target(target):
     """ check if the target contains only valid characters"""
-    valid_chars = re.compile(r'^[\w\-_\.]+$', flags=re.A) #pylint: disable=no-member
+    valid_chars = re.compile(
+        r'^[\w\-_\.]+$', flags=re.A)  # pylint: disable=no-member
     assert valid_chars.match(target)
 
+
 def check_command(command):
-    """ check if the target contains only valid characters"""
-    valid_chars = re.compile(r'^[\s\w\-\+_\/\>\<\&\\\(\)\[\]\$\~\"\'\*\.\!\#\@\;\:]+$', flags=re.A) #pylint: disable=no-member
-    assert valid_chars.match(command)
+    """ check if the command contains only valid characters"""
+    valid_chars = re.compile(
+        r'^[\s\w\-\+_\/\>\<\&\\\(\)\[\]\$\~\"\'\*\.\!\#\@\;\:\|]+$', flags=re.A)  # pylint: disable=no-member
+    assert valid_chars.match(command.strip())
+
 
 def check_description(description):
-    """ check if the target contains only valid characters"""
+    """ check if the description contains only valid characters"""
     valid_chars = re.compile(r'^[\s\w\-\+_\.\,]+$')
-    assert valid_chars.match(description)
+    assert valid_chars.match(description.strip())
+
+
+def check_projects(project):
+    """ check if the project contains only valid characters"""
+    valid_chars = re.compile(r'^[\s\w\-_\.]+$')
+    assert valid_chars.match(project.strip())
+
+
+def check_user_id(user):
+    """ check if the user contains only valid characters"""
+    valid_chars = re.compile(r'^[a-zA-Z]+$')
+    assert valid_chars.match(user.strip())
+
+
+def check_job_id(job_id):
+    """ check if the job id contains only valid characters"""
+    valid_chars = re.compile(
+        r'^[a-zA-Z0-9\-]+$', flags=re.A)  # pylint: disable=no-member
+    assert valid_chars.match(job_id)

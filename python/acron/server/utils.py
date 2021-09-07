@@ -14,14 +14,18 @@ import inspect
 import logging
 import os
 import re
+from random import randint
+from subprocess import Popen, PIPE
 from socket import gethostbyaddr
 from flask import current_app, request
 import ldap3
-from acron.errors import ERRORS
+
+from acron.constants import ReturnCodes
 from acron.exceptions import KdestroyError, KinitError
 from acron.utils import fqdnify as ext_fqdnify
 from acron.utils import krb_init_keytab as ext_krb_init_keytab
 from acron.utils import krb_destroy as ext_krb_destroy
+from acron.server.constants import ConfigFilenames
 
 __author__ = 'Philippe Ganz (CERN)'
 __credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
@@ -47,8 +51,10 @@ def dump_args(func):
         Adds the args dump functionality.
         '''
         func_args = inspect.signature(func).bind(*args, **kwargs).arguments
-        func_args_str = ', '.join('{} = {!r}'.format(*item) for item in func_args.items())
-        logging.debug('%s.%s ( %s )', func.__module__, func.__qualname__, func_args_str)
+        func_args_str = ', '.join('{} = {!r}'.format(*item)
+                                  for item in func_args.items())
+        logging.debug('%s.%s ( %s )', func.__module__,
+                      func.__qualname__, func_args_str)
         return func(*args, **kwargs)
     return wrapper
 
@@ -106,6 +112,25 @@ def ldap_groups_expansion(groups):
 
 
 @dump_args
+def check_ldap_group_membership(user, ldap_group):
+    '''
+    Check if the user is in the specified LDAP group.
+
+    :param user:       user to perform lookup
+    :param ldap_group: name of LDAP group
+    :returns:          boolean, True if user is in given LDAP group, False otherwise.
+    '''
+    ldap_group_users = ldap_groups_expansion(ldap_group)
+
+    logging.debug(
+        f'Checking LDAP group membership of user {user} in group {ldap_group}')
+
+    is_user_in_ldap_group = user in ldap_group_users
+    logging.debug(f'User {user} in {ldap_group}: {is_user_in_ldap_group}')
+    return is_user_in_ldap_group
+
+
+@dump_args
 def get_remote_hostname():
     '''
     Performs a DNS lookup on remote_addr of the current context.
@@ -153,8 +178,8 @@ def krb_init_keytab(keytab, principal):
         ext_krb_init_keytab(keytab, principal)
     except KinitError as error:
         logging.debug('Kerberos initialization with keytab failed. %s', error)
-        raise KinitError
-    return ERRORS['OK']
+        raise KinitError from error
+    return ReturnCodes.OK
 
 
 @dump_args
@@ -168,8 +193,8 @@ def krb_destroy(cachefile):
         ext_krb_destroy(cachefile)
     except KdestroyError as error:
         logging.debug('Kerberos destruction failed. %s', error)
-        raise KdestroyError
-    return ERRORS['OK']
+        raise KdestroyError from error
+    return ReturnCodes.OK
 
 
 @dump_args
@@ -183,3 +208,92 @@ def create_parent(path):
     if not os.path.exists(path_parent):
         logging.debug('%s does not exist, creating.', path_parent)
         os.makedirs(path_parent, 0o0775)
+
+
+@dump_args
+def _cron2quartz(schedule):
+    '''
+    Convert cron schedule to quartz
+
+    :param schedule: Schedule in cron format
+    :returns: Schedule in quartz format
+    '''
+    fields = re.split(r'\s+', schedule)
+    if fields[2] == '*':
+        if fields[4] == '*':
+            # flaw: if both all monthdays and all weekdays are specified, weekday should be?
+            fields[4] = '?'
+        else:
+            if fields[4] != '?':
+                fields[2] = '?'
+
+    # we fix the year to be '*' and the second to be random between 10s
+    return ' '.join([str(randint(0, 10))] + fields + ['*'])
+
+
+@dump_args
+def _execute_command(cmd):
+    '''
+    Open subprocess and execute command
+
+    :param cmd: Command to execute as string
+    :returns: Tuple of return code and error message, if any
+    '''
+    logging.debug('Popen: %s', cmd)
+    with Popen([cmd],
+               universal_newlines=True,
+               stdout=PIPE,
+               stderr=PIPE,
+               shell=True) as process:
+        out, err = process.communicate()
+        logging.debug(out.rstrip('\n'))
+
+    if process.returncode != 0:
+        logging.error(err)
+
+    return process.returncode, out, err
+
+
+@dump_args
+def _get_project_home_path(config, project_id, filename):
+    '''
+    Get path to shareable file in a specific project
+
+    :param config:     a dictionary containing all the config values
+    :param project_id: ID of project to construct path with
+    :param filename:   name of file to get path to
+
+    :returns: path to file for project_id
+    :returns: absolute path to parent directory of file for project_id
+    '''
+    path = os.path.join(config['SCHEDULER']
+                        ['PROJECTS_HOME'], project_id, filename)
+    path_parent = os.path.abspath(os.path.join(path, os.pardir))
+
+    return path, path_parent
+
+
+@dump_args
+def _delete_shareable_file(project_id, config):
+    '''
+    Delete shareable file of project
+
+    :param project_id: ID of project to delete shareable file
+    :param config:                a dictionary containing all the config values
+    :returns:          Boolean True if file existed
+    '''
+    path, _ = _get_project_home_path(config,
+                                     project_id,
+                                     ConfigFilenames.SHAREABLE)
+
+    msg = f'project {project_id} under {path}'
+
+    if not os.path.exists(path):
+        logging.debug(
+            f'No shareable file to delete for {msg}')
+        return False
+
+    logging.debug(
+        f'Deleting shareable file of {msg}')
+    os.unlink(path)
+    return True

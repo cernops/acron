@@ -1,0 +1,108 @@
+.\" Manpage for acron.
+.\" Contact acron-devs@cern.ch to report errors or typos.
+.TH ACRON-PROJECTS 1 "01/09/2021" "Acron 0.14.0" "Acron Manual"
+
+.SH NAME
+acron-projects \- Manage projects on the server
+
+.SH SYNOPSIS
+acron projects [-h] <command> [<args>]
+
+.SH DESCRIPTION
+This command acts on projects on the acron server.
+
+.SH OPTIONS
+.TP 4
+.B -h, --help
+Print a short help message.
+.TP 4
+.B -a, --all
+Show all shareable projects for current user.
+
+.SH COMMANDS
+.B show
+.RS 4
+Show definition of a project.
+.PP
+There are two options here, either show the definition of a single project or see all projects. By default it lists only own project.
+.TP 4
+.B -a, --all
+Show all shareable projects.
+.RE
+.PP
+.B share
+.RS 4
+Share project with another user.
+.PP
+User ID of the user to share project with is a required argument.
+.TP 4
+.B -u, --user_id USER_ID
+Share project with user (read-only permissions).
+.RS 4
+.TP 4
+.B -w, --write
+Grant user write permissions to project.
+.TP 4
+.B -d, --delete
+Delete project share for user.
+.RE
+.RE
+.B delete
+.RS 4
+Delete project of the authenticated user.
+
+
+.SH EXIT CODES
+.TP 4
+.B 0
+All good.
+.TP 4
+.B 1
+Bad arguments.
+.TP 4
+.B 2
+Credentials are not valid.
+.TP 4
+.B 3
+Not allowed to access the requested resource.
+.TP 4
+.B 5
+The requested resource could not be found.
+.TP 4
+.B 6
+Unknown issue with the backend.
+.TP 4
+.B 7
+User error, e.g. wrong format.
+.TP 4
+.B 8
+Aborted operation.
+
+.SH EXAMPLES
+.TP 4
+.B List own project and users who have access to it.
+acron projects show
+.TP 4
+.B List all projects user has access to.
+acron projects show --all
+.TP 4
+.B Grant user read-only permissions to own project.
+acron projects share --user_id USER_ID
+.TP 4
+.B Grant user read and write permissions to own project.
+acron projects share --user_id USER_ID --write
+.TP 4
+.B Revoke project share for user.
+acron projects share --user_id USER_ID --delete
+.TP 4
+.B Delete the user's project.
+acron projects delete
+
+.SH SEE ALSO
+acron(1), acron-creds(1), acron-jobs(1)
+
+.SH BUGS
+No known bugs. Please report any to the acron-devs team (acron-devs@cern.ch).
+
+.SH AUTHOR
+Rodrigo Bermudez Schettino (rodrigo.bermudez.schettino@cern.ch)

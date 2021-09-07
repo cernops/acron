@@ -15,7 +15,7 @@ import os
 import sys
 import pkg_resources
 import yaml
-from acron.errors import ERRORS
+from acron.constants import ReturnCodes
 
 with open('/etc/acron/server.config', 'r') as config_file:
     config = yaml.safe_load(config_file)
@@ -23,7 +23,8 @@ with open(os.path.join(config['CREDS']['CONFIG'], 'file.config'), 'r') as config
     config['CREDS'].update(yaml.safe_load(config_file))
 
 __author__ = 'Philippe Ganz (CERN)'
-__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)', 'Rodrigo Bermudez Schettino (CERN)']
+__credits__ = ['Philippe Ganz (CERN)', 'Ulrich Schwickerath (CERN)',
+               'Rodrigo Bermudez Schettino (CERN)']
 __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
@@ -35,10 +36,12 @@ def delete_creds(username):
 
     :param username: user to delete the credentials for
     '''
-    creds_file_encrypted = os.path.join(config['CREDS']['LOCATION'], username + '.keytab.gpg')
-    creds_file_cached = os.path.join(config['CREDS']['CACHE'], username + '.keytab')
+    creds_file_encrypted = os.path.join(
+        config['CREDS']['LOCATION'], username + '.keytab.gpg')
+    creds_file_cached = os.path.join(
+        config['CREDS']['CACHE'], username + '.keytab')
 
-    status_code = ERRORS['OK']
+    status_code = ReturnCodes.OK
 
     try:
         os.remove(creds_file_cached)
@@ -47,19 +50,21 @@ def delete_creds(username):
 
     if not os.path.exists(creds_file_encrypted):
         sys.stderr.write('File creds storage: no credentials found to delete.')
-        status_code = ERRORS['NOT_FOUND']
+        status_code = ReturnCodes.NOT_FOUND
     else:
         try:
             os.remove(creds_file_encrypted)
         except OSError as error:
-            sys.stderr.write('File creds storage: could not delete creds. ' + str(error) + '\n')
-            status_code = ERRORS['BACKEND_ERROR']
+            sys.stderr.write(
+                'File creds storage: could not delete creds. ' + str(error) + '\n')
+            status_code = ReturnCodes.BACKEND_ERROR
 
     return status_code
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog='delete_creds', description='Acron credential removal tool.')
+    parser = argparse.ArgumentParser(
+        prog='delete_creds', description='Acron credential removal tool.')
     parser.add_argument(
         '-v', '--version', action='version',
         version=pkg_resources.require('acron')[0].version)

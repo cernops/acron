@@ -13,12 +13,12 @@ from setuptools import setup
 
 
 setup(name='acron',
-      version='0.11.14',
+      version='0.14.0',
       description='Authenticated crontab service',
       author='Philippe Ganz (CERN)',
       author_email='philippe.ganz@cern.ch',
-      maintainer='Ulrich Schwickerath (CERN)',
-      maintainer_email='Ulrich.Schwickerath@cern.ch',
+      maintainer='Rodrigo Bermudez Schettino (CERN)',
+      maintainer_email='rodrigo.bermudez.schettino@cern.ch',
       url='https://gitlab.cern.ch/acron-devs/acron',
       download_url='https://gitlab.cern.ch/acron-devs/acron',
       license='GPL-3.0',
@@ -33,7 +33,5 @@ setup(name='acron',
       entry_points={
           'console_scripts': [
               'acron=acron.client:main',
-          ],},
-
-
-     )
+          ], },
+      )
