@@ -1,0 +1,24 @@
+/var/log/acron/executions.log {
+    missingok
+    notifempty
+    sharedscripts
+    delaycompress
+    postrotate
+        /bin/systemctl reload httpd.service > /dev/null 2>/dev/null || true
+    endscript
+    create 640 acron acron
+    su acron acron
+    weekly 1
+}
+/var/log/acron/health_check.log {
+    missingok
+    notifempty
+    sharedscripts
+    delaycompress
+    postrotate
+        /bin/systemctl reload httpd.service > /dev/null 2>/dev/null || true
+    endscript
+    create 640 acron acron
+    su acron acron
+    weekly 1
+}

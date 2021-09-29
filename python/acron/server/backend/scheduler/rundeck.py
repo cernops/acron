@@ -7,6 +7,7 @@
 # In applying this licence, CERN does not waive the privileges and immunities granted to it
 # by virtue of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
 #
+#pylint: disable=too-many-lines
 '''Implementation of the Rundeck backend client'''
 
 import logging
@@ -765,7 +766,7 @@ class Rundeck(Scheduler):
 
     @staticmethod
     @dump_args
-    def take_over_jobs(server_uuid, config):
+    def projects_on_server(server_uuid, config):
         '''
         Take over all the jobs from another server.
         :param server_uuid:   the UUID of the server to take the jobs from
@@ -779,10 +780,46 @@ class Rundeck(Scheduler):
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
+        path = config['SCHEDULER']['API_URL'] + '/scheduler/jobs'
+        projects = []
+        try:
+            response = requests.get(path, json=params, headers=headers)
+            if response.status_code == 200 and hasattr(response, 'json'):
+                for job in response.json():
+                    if not job['project'] in projects:
+                        projects.append(job['project'])
+        except Exception as error: #pylint: disable=broad-except
+            logging.warning(error)
+        return projects
+
+    @staticmethod
+    @dump_args
+    def take_over_jobs(server_uuid, config, project):
+        '''
+            Take over all the jobs from another server.
+            :param server_uuid:   the UUID of the server to take the jobs from
+            :param config:        a dictionary containing all the config values
+            :raises RundeckError: on unexpected backend error
+            :returns:             a dictionary containing the backend's response
+            '''
+        params = {
+            'server': {
+                'uuid': server_uuid
+            },
+            'project': project
+        }
+        headers = {
+            'X-Rundeck-Auth-Token': config['SCHEDULER']['API_KEY'],
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
         path = config['SCHEDULER']['API_URL'] + '/scheduler/takeover'
-        response = requests.put(path, json=params, headers=headers)
-        if response.status_code == 200 and hasattr(response, 'json'):
-            return response.json()
+        try:
+            response = requests.put(path, json=params, headers=headers)
+            if response.status_code == 200 and hasattr(response, 'json'):
+                return response.json()
+        except Exception as error: #pylint: disable=broad-except
+            logging.warning(error)
         raise RundeckError('Takeover failed. ' + response.text)
 
     # pylint: disable=too-many-arguments
@@ -905,8 +942,9 @@ class Rundeck(Scheduler):
                 cmd, self.project_id)
             jobs_properties = yaml.safe_load(jobs_file)
         if not jobs_properties:
-            payload = {'message': 'No jobs found in project ' +
-                       self.project_id + '.'}
+            payload = {
+                'message': 'No jobs found in project ' +
+                           self.project_id + '.'}
         else:
             payload = jobs_properties
         return payload
