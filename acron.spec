@@ -1,5 +1,5 @@
 Name: python36-acron
-Version: 0.14.0
+Version: 0.14.3
 Release: 1%{?dist}
 License: GPLv3
 URL: https://gitlab.cern.ch/acron-devs/acron
@@ -170,6 +170,9 @@ install ./etc/bash_completion.d/* %{buildroot}%{_sysconfdir}/bash_completion.d/
 mkdir -p %{buildroot}%{_sysconfdir}/sudoers.d/
 install ./etc/sudoers.d/* %{buildroot}%{_sysconfdir}/sudoers.d/
 
+mkdir -p %{buildroot}%{_sysconfdir}/logrotate.d/
+install ./etc/logrotate.d/* %{buildroot}%{_sysconfdir}/logrotate.d/
+
 mkdir -p %{buildroot}%{_mandir}/man1/
 install ./man/man1/* %{buildroot}%{_mandir}/man1/
 
@@ -291,6 +294,7 @@ fi
 %exclude %{python3_sitelib}/acron/server/backend/scheduler/rundeck*
 %attr(0640, acron, acron) %config(noreplace) %{_sysconfdir}/acron/server.config
 %attr(0750, acron, acron) %dir %{_sysconfdir}/acron/server/
+%attr(0644, root, root)%config(noreplace) %{_sysconfdir}/logrotate.d/acron
 %attr(0750, acron, acron) %dir %{_localstatedir}/log/acron/
 %attr(0750, acron, acron) %{_libexecdir}/acron/ssh_run
 
@@ -346,7 +350,15 @@ fi
 
 
 %changelog
-* Wed Sep 1 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.14.0-1
+* Fri Sep 24 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.3-1
+- GPG patches to make the server work on CS8
+- do the take over by project
+- add script for manual take over of jobs
+- update logrotate script
+* Wed Sep 15 2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.14.1-1
+- do not send messages for successful jobs with no output
+- bump version
+* Wed Sep 1  2021 Rodrigo Bermudez Schettino <rodrigo.bermudez.schettino@cern.ch> - 0.14.0-1
 - set custom job names optionally
 - add command to delete project
 - add command to revoke project share

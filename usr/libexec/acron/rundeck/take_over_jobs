@@ -14,11 +14,9 @@
 import argparse
 import logging
 import os
-import socket
 import sys
 import syslog
 import pkg_resources
-import requests
 import yaml
 from acron.constants import ReturnCodes
 from acron.exceptions import SchedulerError
@@ -38,7 +36,6 @@ __maintainer__ = 'Rodrigo Bermudez Schettino (CERN)'
 __email__ = 'rodrigo.bermudez.schettino@cern.ch'
 __status__ = 'Development'
 
-
 def log_check(level, message):
     '''
     Logs the execution summary of the ssh run.
@@ -53,56 +50,23 @@ def log_check(level, message):
     syslog.syslog(message)
 
 
-def check_other_hosts_alive(hosts):
-    '''
-    Launches a heart beat check on all the hosts
-
-    :param hosts: list of hosts to check
-    '''
-    for host in hosts:
-        sys.stdout.write('Checking host ' + host + '...\n')
-        try:
-            response = requests.get(
-                'https://' + hosts[host]['URL'] + '/system/info')
-            if response.status_code == 200:
-                sys.stdout.write('Host ' + host + ' reported OK.\n')
-                log_check(logging.INFO, f'Host {host} reported OK.')
-                hosts[host]['Status'] = True
-            else:
-                if (hasattr(response, 'json') and hasattr(response.json(), 'keys') and
-                        'message' in response.json().keys()):
-                    sys.stderr.write(response.json()['message'] + '\n')
-                    log_check(
-                        logging.WARNING, f'Host {host} reported KO! ' + response.json()['message'])
-                else:
-                    sys.stderr.write(response.content)
-                    log_check(logging.WARNING,
-                              f'Host {host} reported KO! ' + response.content)
-                sys.stdout.write('Host ' + host + ' reported KO!\n')
-                hosts[host]['Status'] = False
-        except (OSError, ConnectionError) as error:
-            log_check(logging.WARNING,
-                      f'Host {host} reported KO! ' + str(error))
-            sys.stdout.write('Host ' + host + ' reported KO!\n')
-            hosts[host]['Status'] = False
-    return hosts
-
-
-def health_check():
+def check_server(host):
     '''
     Check for other hosts
     '''
     status_code = ReturnCodes.OK
+    hosts = CONFIG['SCHEDULER']['SERVER_LIST']
     try:
-        hosts = check_other_hosts_alive(CONFIG['SCHEDULER']['SERVER_LIST'])
-        for host in hosts:
-            if not hosts[host]['Status'] and hosts[host]['URL'] != socket.getfqdn():
-                log_check(logging.INFO, f'Taking over jobs from {host}... ')
-                projects = Rundeck.projects_on_server(hosts[host]['UUID'], CONFIG)
-                for project in projects:
-                    log_check(logging.INFO, 'Taking over project '+project)
-                    Rundeck.take_over_jobs(hosts[host]['UUID'], CONFIG, project)
-                log_check(logging.INFO, 'successfully taken over all the jobs.')
+        if host in CONFIG['SCHEDULER']['SERVER_LIST']:
+            log_check(logging.INFO, f'Taking over jobs from {host}... ')
+            projects = Rundeck.projects_on_server(hosts[host]['UUID'], CONFIG)
+            for project in projects:
+                log_check(logging.INFO, 'Taking over project '+project)
+                Rundeck.take_over_jobs(hosts[host]['UUID'], CONFIG, project)
+            log_check(logging.INFO, 'successfully taken over all the jobs.')
+        else:
+            sys.stderr.write("%s is not part of this service" % host)
+            sys.exit(1)
     except SchedulerError as error:
         sys.stderr.write(f'A problem occurred with the backend: {error}\n')
         log_check(logging.ERROR, f'takeover failed! {error}')
@@ -110,13 +74,19 @@ def health_check():
     return status_code
 
 def main():
-    ''' parse arguments and do the health check '''
+    """ get args and take over the jobs """
     parser = argparse.ArgumentParser(prog='health_check',
                                      description='Acron project health check utility for Rundeck backend.')
     parser.add_argument(
         '-v', '--version', action='version',
         version=pkg_resources.require('acron')[0].version)
-    return health_check()
+    parser.add_argument('-s', '--server',
+                        action='store',
+                        dest='server',
+                        default=None,
+                        help='Migrate jobs from that server to the current one')
+    args = parser.parse_args()
+    return check_server(str(args.server))
 
 if __name__ == "__main__":
     sys.exit(main())

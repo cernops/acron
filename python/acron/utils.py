@@ -112,6 +112,7 @@ def gpg_decrypt_file(encrypted_file, result, gpg_binary, gpg_home, gpg_passphras
     :raises GPGError:           if the decryption fails
     '''
     with Popen([gpg_binary, '--batch',
+                '--pinentry-mode', 'loopback',
                 '--homedir', gpg_home,
                 '--passphrase-file', gpg_passphrase_file,
                 '--output', result,

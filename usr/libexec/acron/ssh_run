@@ -245,6 +245,12 @@ def run_ssh(job_id, username, target, command):
         log_execution(username, target, command,
                       time.time() - start, status_code)
 
+        if not cmd_output or cmd_output == '':
+            logging.debug(
+                f'Command {command} on {username}@{target} produced no output.' +
+                'Skipping email notification')
+            return status_code
+
         subject = f'Acron job {job_id}'
         body = (f'Job {job_id}: {username}@{target} {command}' +
                 f'returned {str(status_code)}, ')
@@ -260,8 +266,6 @@ def run_ssh(job_id, username, target, command):
             body += (f'failed during execution of the command.\n' +
                      'Please ensure that the command exits with return code 0 ' +
                      'and update your job accordingly.')
-        elif not cmd_output or cmd_output == '':
-            body += 'producing no output.'
         else:
             body += 'producing the following output:' + '\n\n' + output
 
