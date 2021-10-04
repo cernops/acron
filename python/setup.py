@@ -13,7 +13,7 @@ from setuptools import setup
 
 
 setup(name='acron',
-      version='0.14.3',
+      version='0.14.4',
       description='Authenticated crontab service',
       author='Philippe Ganz (CERN)',
       author_email='philippe.ganz@cern.ch',
