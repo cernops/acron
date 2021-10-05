@@ -1,5 +1,5 @@
 Name: python36-acron
-Version: 0.14.3
+Version: 0.14.4
 Release: 1%{?dist}
 License: GPLv3
 URL: https://gitlab.cern.ch/acron-devs/acron
@@ -28,6 +28,7 @@ Provides the files common to both the server and the client side
 %package server
 Conflicts: python-acron-server
 Requires: %{name}-common
+Requires: httpd
 Requires: httpd-devel
 Requires: python3-devel
 Requires: python3-flask
@@ -177,6 +178,7 @@ mkdir -p %{buildroot}%{_mandir}/man1/
 install ./man/man1/* %{buildroot}%{_mandir}/man1/
 
 mkdir -p %{buildroot}%{_localstatedir}/log/acron/
+mkdir -p %{buildroot}%{_localstatedir}/log/acron_service/
 
 mkdir -p %{buildroot}%{_localstatedir}/acron/creds/
 
@@ -294,9 +296,10 @@ fi
 %exclude %{python3_sitelib}/acron/server/backend/scheduler/rundeck*
 %attr(0640, acron, acron) %config(noreplace) %{_sysconfdir}/acron/server.config
 %attr(0750, acron, acron) %dir %{_sysconfdir}/acron/server/
-%attr(0644, root, root)%config(noreplace) %{_sysconfdir}/logrotate.d/acron
 %attr(0750, acron, acron) %dir %{_localstatedir}/log/acron/
+%attr(0750, apache, apache) %dir %{_localstatedir}/log/acron_service/
 %attr(0750, acron, acron) %{_libexecdir}/acron/ssh_run
+%attr(0644, root, root)%config %{_sysconfdir}/logrotate.d/*
 
 %files server-creds-file
 %{python3_sitelib}/acron/server/backend/creds/file*
@@ -350,7 +353,11 @@ fi
 
 
 %changelog
-* Fri Sep 24 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.3-1
+* Thu  Sep 30 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.4-1
+- Update SELinux rules for gpg access to file
+- change location of the service logs to log/acron_service
+- update logrotate rules accordingly
+* Fri Sep 24 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.3-2
 - GPG patches to make the server work on CS8
 - do the take over by project
 - add script for manual take over of jobs
