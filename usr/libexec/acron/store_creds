@@ -57,7 +57,7 @@ def store_creds(username, creds_file_encrypted):
         realms = krb_check_keytab(creds_file, flavor)
         # check if we can kinit with all realms found in the keytab
         for realm in realms:
-            cachefile = "/tmp/krb5cc_"+username+"_"+realm
+            cachefile = "/tmp/krb5cc_realmtest_"+username+"_"+realm
             krb_init_keytab(creds_file, username+'@'+realm, cachefile)
             os.unlink(cachefile)
         creds_file_encrypted_target = os.path.join(CONFIG['CREDS']['LOCATION'],
@@ -67,22 +67,22 @@ def store_creds(username, creds_file_encrypted):
 
     except GPGError as error:
         sys.stderr.write(
-            'File creds storage: GPG decryption failed. ' + str(error) + '\n')
+            'File creds storage: GPG decryption failed: %s ' % str(error))
         status_code = ReturnCodes.BACKEND_ERROR
     except KlistError as error:
         sys.stderr.write(
-            'File creds storage: Kerberos keytab is not in a valid format. ' + str(error) + '\n')
+            'File creds storage: Kerberos keytab is not in a valid format: %s ' % str(error))
         status_code = ReturnCodes.BAD_ARGS
     except KinitError as error:
         sys.stderr.write(
-            'File creds storage: Kerberos keytab initialization failed. ' + str(error) + '\n')
+            'File creds storage: Kerberos keytab initialization failed: %s ' % str(error))
         status_code = ReturnCodes.BAD_ARGS
     except shutil.Error:
-        sys.stderr.write('Source and destination are the same files.' + '\n')
+        sys.stderr.write('Source and destination are the same files.')
         status_code = ReturnCodes.BACKEND_ERROR
     except IOError as error:
         sys.stderr.write(
-            'File creds storage: could not copy creds. ' + str(error) + '\n')
+            'File creds storage: could not copy creds: %s ' % str(error))
         status_code = ReturnCodes.BACKEND_ERROR
 
     return status_code

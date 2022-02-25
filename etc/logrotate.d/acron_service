@@ -1,0 +1,12 @@
+/var/log/acron_service/*.log {
+    missingok
+    notifempty
+    sharedscripts
+    delaycompress
+    postrotate
+        /bin/systemctl reload httpd.service > /dev/null 2>/dev/null || true
+    endscript
+    create 640 apache apache
+    su apache apache
+    weekly 1
+}

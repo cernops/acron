@@ -1,11 +1,11 @@
-Name: python36-acron
-Version: 0.14.4
+Name: python3-acron
+Version: 0.14.7
 Release: 1%{?dist}
 License: GPLv3
 URL: https://gitlab.cern.ch/acron-devs/acron
 Source0: %{name}-%{version}.tgz
 BuildRequires: bzip2
-BuildRequires: python36-devel
+BuildRequires: python3-devel
 BuildRequires: selinux-policy-devel
 BuildRequires: zip
 BuildArch: noarch
@@ -353,6 +353,23 @@ fi
 
 
 %changelog
+* Mon Feb 7 2022  Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.7-2
+- Improve error message when Kerberos principal couldn't be found
+- Upgrade Rundeck API installed on servers
+- unify 2FA message
+- do not dump job output in log files
+- Check if cache file is valid before recreating it
+- allow , in the command
+- correct regexp for parsing the schedule
+* Wed  Jan 12 2022 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.6-2
+- add user name to output if no valid credentials can be found
+- log user output only in debug mode
+- omit additional newline characters in stderr.write statements
+* Mon  Dec 6 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.5-3
+- improve formatting of output e-mail
+- bug fix in acrontab2acron
+* Thu  Sep 30 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.5-1
+- avoid using shell=True
 * Thu  Sep 30 2021 Ulrich Schwickerath <ulrich.schwickerath@cern.ch> - 0.14.4-1
 - Update SELinux rules for gpg access to file
 - change location of the service logs to log/acron_service

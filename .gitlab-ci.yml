@@ -1,0 +1,53 @@
+variables:
+  BUILD_9: 'True'
+  BUILD_8s: 'True'
+  BUILD_7: 'True'
+  DIST_7: '.el7.cern'
+  KOJI_TAG_9: 'acron9'
+  KOJI_TAG_8s: 'acron8s'
+  KOJI_TAG_7: 'acron7'
+
+include:
+  - 'https://gitlab.cern.ch/linuxsupport/rpmci/raw/master/rpm-ci.yml'
+
+.test_rpmlint:
+  allow_failure: true
+
+test_pylint7:
+  stage: prebuild
+  script:
+    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/linuxsupport7-stable/x86_64/os
+    - yum-config-manager --setopt=*linuxsupport7-stable*.priority=2 --save
+    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/acron7-stable/x86_64/os/
+    - yum-config-manager --setopt=*acron7-stable*.priority=90 --setopt=*acron7-stable*.gpgcheck=False --setopt=*acron7-stable*.gpgkey="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-koji file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" --save;
+    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/acron7-testing/x86_64/os/
+    - yum-config-manager --setopt=*acron7-testing*.priority=100 --setopt=*acron7-testing*.gpgcheck=False --setopt=*acron7-testing*.gpgkey="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-koji file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" --save;
+    - yum clean all
+    - yum -y install python3 python3-flask-login python36-flask python36-devel python36-pip python36-requests-gssapi python36-PyYAML python36-pylint python36-ldap3 python36-memcached
+    - python3 -m pylint --output-format=colorized python/acron python/setup.py usr/bin/acron* --jobs 8 --max-line-length=110 --disable=bad-continuation
+
+#test_pylint8:
+#  stage: prebuild
+#  script:
+#    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/linuxsupport8-stable/x86_64/os
+#    - yum-config-manager --setopt=*linuxsupport8-stable*.priority=2 --save
+#    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/acron8-stable/x86_64/os/
+#    - yum-config-manager --setopt=*acron8-stable*.priority=90 --setopt=*acron8-stable*.gpgcheck=False --setopt=*acron8-stable*.gpgkey="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-koji file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" --save;
+#    - yum-config-manager --add-repo http://linuxsoft.cern.ch/internal/repos/acron8-testing/x86_64/os/
+#    - yum-config-manager --setopt=*acron8-testing*.priority=100 --setopt=*acron8-testing*.gpgcheck=False --setopt=*acron8-testing*.gpgkey="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-koji file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" --save;
+#    - yum clean all
+#    - yum -y install python python3-flask-login python3-flask python-devel python3-pip python3-requests-gssapi python3-PyYAML python3-pylint python3-ldap3 python3-memcached
+#    - python3 -m pylint python/acron python/setup.py --jobs 8 --max-line-length=110
+
+test_python:
+  stage: prebuild
+  script:
+    - cd python
+    - yum install -y python3
+    - PYTHONPATH=. python3 test/schedule_regex.py
+
+.test_install:
+  before_script:
+    - export _KOJITAG_OS="KOJI_TAG_${_KOJI_OS}"
+    - export _KOJITAG=${!_KOJITAG_OS:-"${KOJI_TAG}${_KOJI_OS}"}
+    - yum install -y --nogpgcheck python3 `ls koji/*client*${DIST}*rpm koji/python3-acron-common*rpm`

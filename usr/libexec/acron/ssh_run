@@ -24,7 +24,7 @@ import pkg_resources
 from acron.constants import ReturnCodes
 from acron.exceptions import (CredsError, CredsNoFileError, KinitError,
                               SSHFailureError, JobExecutionError)
-from acron.utils import krb_init_keytab, krb_check_keytab
+from acron.utils import krb_init_keytab, krb_check_keytab, krbcc_is_valid
 from acron.notifications import email_user
 
 __author__ = 'Philippe Ganz (CERN)'
@@ -102,29 +102,39 @@ def init_creds(username, target):
         creds_file = get_creds_file(username)
         realms = krb_check_keytab(creds_file, flavor)
         if len(realms) > 1:
-            # check if we can kinit with all realms found in the keytab
+            # if there are several Realms we need to check which one the target supports
+            # in that case we launch a pilot command first and see if it works on the target
+            # In case of success we use that one.
             for realm in realms:
-                try:
-                    krb_init_keytab(creds_file, username+'@'+realm,
-                                    cachefile="/tmp/krb5cc_"+username+"_"+realm)
-                    launch_command(username, realm, target,
-                                   '/bin/true', retries=1, log=False)
-                    logging.info(
-                        "Connection test succeeded for realm %s", realm)
-                    return realm
-                except (KinitError, SSHFailureError) as error:
-                    pass
+                cachefile = "/tmp/krb5cc_"+username+"_"+realm
+                if krbcc_is_valid(cachefile):
+                    logging.debug("Cache file %s exists and is valid", cachefile)
+                else:
+                    try:
+                        krb_init_keytab(creds_file,
+                                        username+'@'+realm,
+                                        cachefile=cachefile)
+                        launch_command(username, realm, target,
+                                       '/bin/true', retries=1, log_attempts=False)
+                        logging.info(
+                            "Connection test succeeded for realm %s", realm)
+                        return realm
+                    except (KinitError, SSHFailureError) as error:
+                        pass
             return None
+        realm = realms[0]
+        cachefile = "/tmp/krb5cc_"+username+"_"+realm
+        if krbcc_is_valid(cachefile):
+            logging.debug("Cache file %s exists and is valid", cachefile)
         else:
-            realm = realms[0]
             krb_init_keytab(creds_file, username+'@'+realm,
                             cachefile="/tmp/krb5cc_"+username+"_"+realm)
-            return realm
+        return realm
     except CredsNoFileError as error:
-        logging.error(error)
+        logging.error(str(error).rstrip()+" for user "+username)
         raise CredsNoFileError(error)
     except (CredsError) as error:
-        logging.error(error)
+        logging.error(str(error).rstrip()+" for user "+username)
         raise CredsError(error)
 
 
@@ -157,8 +167,8 @@ def launch_command(username, realm, target, command, retries=3, log_attempts=Tru
     '''
     cachefile = "/tmp/krb5cc_"+username+"_"+realm
 
-    logging.info(
-        f'Launch command {command} for user {username} using {cachefile} in realm {realm}')
+    logging.info('Launch command %s for user %s using %s in realm %s',
+                 command, username, cachefile, realm)
 
     # setup environment for ssh call
     execenv = os.environ.copy()
@@ -201,13 +211,11 @@ def launch_command(username, realm, target, command, retries=3, log_attempts=Tru
     # Exit code 255 is returned when SSH connection fails
     # Source: https://tldp.org/LDP/abs/html/exitcodes.html#AEN23549
     if retc == 255:
-        logging.error(
-            f'SSH command {error_msg_postfix}')
+        logging.error('SSH command %s', error_msg_postfix)
         raise SSHFailureError(retc, out)
 
     if retc != 0:
-        logging.error(
-            f'Execution of job command {error_msg_postfix}')
+        logging.error('Execution of job command %s', error_msg_postfix)
         raise JobExecutionError(retc, out)
 
     return out
@@ -247,13 +255,13 @@ def run_ssh(job_id, username, target, command):
 
         if not cmd_output or cmd_output == '':
             logging.debug(
-                f'Command {command} on {username}@{target} produced no output.' +
-                'Skipping email notification')
+                'Command %s on %s@%s produced no output. Skipping email notification',
+                command, username, target)
             return status_code
 
         subject = f'Acron job {job_id}'
         body = (f'Job {job_id}: {username}@{target} {command}' +
-                f'returned {str(status_code)}, ')
+                f' returned {str(status_code)}, ')
 
         # Inform user in email subject that job failed
         if status_code != ReturnCodes.OK:
@@ -263,11 +271,11 @@ def run_ssh(job_id, username, target, command):
         if status_code == ReturnCodes.SSH_ERROR:
             body += f'failed to connect to target {target}'
         elif status_code == ReturnCodes.USER_ERROR:
-            body += (f'failed during execution of the command.\n' +
+            body += (f' failed during execution of the command.\n' +
                      'Please ensure that the command exits with return code 0 ' +
                      'and update your job accordingly.')
         else:
-            body += 'producing the following output:' + '\n\n' + output
+            body += ' producing the following output:' + '\n\n' + output
 
         subject += f' on {target} at {str(datetime.datetime.now())}'
         email_user(username, subject, body)

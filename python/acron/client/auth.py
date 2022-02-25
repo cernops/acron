@@ -12,6 +12,7 @@
 
 import sys
 import os
+import re
 import json
 import requests
 import gssapi
@@ -28,9 +29,12 @@ def get_user_from_principal():
         return principal.split('@')[0]
     except Exception as krb_error:  # pylint: disable=broad-except
         sys.stderr.write(
-            f"Cannot access principal. Please run kinit.\n{krb_error}\n")
+            "Kerberos ticket not found or expired. Exiting...\n")
+        sys.stderr.write(
+            "The error returned was \"%s\"\n" % str(krb_error))
+        sys.stderr.write(
+            "\nPlease run kinit and try again.\n")
         sys.exit(1)
-
 
 def read_secret(length):
     ''' read the 2FA secret from stdin '''
@@ -43,14 +47,16 @@ def read_secret(length):
 
 def otp_secret(secret):
     ''' check if secret can be a OTP '''
-    if secret is not None and len(secret) == 6:
+    valid = re.compile(r'\d+')
+    if secret is not None and len(secret) == 6 and valid.match(secret):
         return '{"otp":"' + secret + '"}'
     return None
 
 
 def yubi_secret(secret):
     ''' check if secret can be a yubicode '''
-    if secret is not None and len(secret) == 44:
+    valid = re.compile(r'\w+')
+    if secret is not None and len(secret) == 44 and valid.match(secret):
         return '{"yubicode":"' + secret + '"}'
     return None
 
@@ -60,26 +66,16 @@ def ask_for_secret():
     username = get_user_from_principal()
     secret = None
     while secret is None:
-        print("""Login for %s:
-
-1. Authenticator App
-2. Yubikey
-
-Option (1-2): """ % username, end="")
+        print("Your 2nd factor (%s):" % username)
         try:
             chars = sys.stdin.readlines(1)[0].rstrip()
-            if len(chars) == 6:
-                secret = otp_secret(chars)
-            if len(chars) == 44:
-                secret = yubi_secret(chars)
-            if chars == '1':
-                print('\nOTP: ', end="")
-                secret = otp_secret(read_secret(6))
-            if chars == '2':
-                print('\nYubikey: ', end="")
-                secret = yubi_secret(read_secret(44))
-            if secret is not None:
-                return secret
+            if len(chars) == 6 or len(chars) == 44:
+                if len(chars) == 6:
+                    secret = otp_secret(chars)
+                if len(chars) == 44:
+                    secret = yubi_secret(chars)
+                if secret is not None:
+                    return secret
             print('\nNo or invalid secret entered.')
         except KeyboardInterrupt:
             # Print empty line
