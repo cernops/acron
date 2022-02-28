@@ -56,7 +56,7 @@ def delete_creds(username):
             os.remove(creds_file_encrypted)
         except OSError as error:
             sys.stderr.write(
-                'File creds storage: could not delete creds. ' + str(error) + '\n')
+                'File creds storage: could not delete creds: %s ' % str(error))
             status_code = ReturnCodes.BACKEND_ERROR
 
     return status_code

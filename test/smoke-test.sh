@@ -91,7 +91,7 @@ test_using_client() {
     acron --version
 
     fancy_echo "Check version of installed rpms"
-    rpm -qa | grep python36-acron
+    rpm -qa | grep python3-acron
 
     _test_creds_using_client
     _test_jobs_using_client

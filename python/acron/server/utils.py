@@ -240,11 +240,12 @@ def _execute_command(cmd):
     :returns: Tuple of return code and error message, if any
     '''
     logging.debug('Popen: %s', cmd)
-    with Popen([cmd],
+    cmdargs = cmd.split()
+    with Popen(cmdargs,
                universal_newlines=True,
                stdout=PIPE,
                stderr=PIPE,
-               shell=True) as process:
+               shell=False) as process:
         out, err = process.communicate()
         logging.debug(out.rstrip('\n'))
 

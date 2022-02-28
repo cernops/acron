@@ -61,14 +61,15 @@ def sanity_checks(args):
               "command", "description", "projects", "user_id"]
 
     # pylint: disable=unused-variable
-    schedule_error_msg = 'Only numbers, /, * and, are allowed, with 5 fields separated by one space.\n'
+    schedule_error_msg = 'Only numbers, day or  month names, and /*?#' \
+        'are allowed, with exactly 5 fields separated by one space.\n'
     # pylint: disable=unused-variable
     target_error_msg = 'Allowed are: "a-z", "A-Z", "0-9", ".", "-" and "_"\n'
     # pylint: disable=unused-variable
     job_id_error_msg = 'Allowed are: "a-z", "A-Z", "0-9", and "-"\n'
     # pylint: disable=unused-variable
     command_error_msg = ('''Allowed are word characters, numbers, spaces, backslash''' +
-                         '''and any of "-+_/><&()[]$~"'*.!#@;:|\n''')
+                         '''and any of "-+_/><&()[]$~"'*.,!#@;:|\n''')
     # pylint: disable=unused-variable
     description_error_msg = 'Allowed are characters, numbers, spaces, "+", "-", "." and "," \n'
     # pylint: disable=unused-variable

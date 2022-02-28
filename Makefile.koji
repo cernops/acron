@@ -2,7 +2,7 @@ PACKAGE=acron
 SPECFILE = $(PACKAGE).spec
 VERSION=$(shell grep -s '^Version' $(SPECFILE) | sed -e 's/Version: *//')
 PKGNAME=$(PACKAGE)-$(VERSION)
-TARFILE=python36-$(PKGNAME).tgz
+TARFILE=python3-$(PKGNAME).tgz
 OWNER=acron-devs
 DIST ?= $(shell rpm --eval %{dist})
 

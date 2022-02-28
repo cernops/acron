@@ -93,7 +93,6 @@ def read_acrontab(acrontab):
 def main():
     ''' main entry point '''
     acron_command = '/usr/bin/acrontab'
-    acron_opts = '-l'
     args = getargs()
     if args.filename is not None:
         with open(args.filename, 'r') as acrontab:
@@ -101,7 +100,7 @@ def main():
     else:
         # run acrontab and write the contents into a temporary file
         if os.path.exists(acron_command):
-            with Popen("%s %s" % (acron_command, acron_opts), stdout=PIPE, shell=True) as acrontab:
+            with Popen([acron_command, '-l'], stdout=PIPE, shell=False) as acrontab:
                 inputs = acrontab.stdout.readlines()
         else:
             print("(!)%s\n%s" %

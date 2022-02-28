@@ -200,9 +200,9 @@ def keytab_generator_custom(username, realm, enc_types, keytab, script):
         resolved = re.split(r'\s+',
                             script.replace(
                                 "__keytab__", keytab).replace(
-                                "__username__", username).replace(
-                                "__realm__", realm).replace(
-                                "__enctype__", encryption_type))
+                                    "__username__", username).replace(
+                                        "__realm__", realm).replace(
+                                            "__enctype__", encryption_type))
         with Popen(resolved, universal_newlines=True,
                    stdout=PIPE,
                    stderr=PIPE,
@@ -270,7 +270,8 @@ def keytab_generator_mit(username, realm, enc_types, keytab):
             ktutil_input += ('-k ' + str(kvno) + ' -s ' + salt + ' -e ' +
                              encryption_type + '\n' + password + '\n')
         ktutil_input += 'wkt ' + keytab + '\n' + 'exit'
-    with Popen(['ktutil'], universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE) as process:
+    with Popen(['ktutil'],
+               universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE) as process:
         _, err = process.communicate(ktutil_input)
         if process.returncode != 0:
             raise KTUtilError(err)
@@ -370,11 +371,11 @@ def krb_init_keytab(keytab, principal, cachefile=None):
         cmd += ['-c', cachefile]
         try:
             logging.debug(
-                f'Trying to remove cachefile located at {cachefile}...')
+                'Trying to remove cachefile located at %s...', cachefile)
             os.unlink(cachefile)
         except FileNotFoundError as _:
-            logging.debug(
-                f'File {cachefile} doesn\'t exist. It will be automatically created next')
+            logging.debug('File %s doesn\'t exist. It will be automatically created next',
+                          cachefile)
 
     cmd += [principal]
 
@@ -383,6 +384,20 @@ def krb_init_keytab(keytab, principal, cachefile=None):
         if process.returncode != 0:
             raise KinitError(err)
 
+def krbcc_is_valid(cachefile=None):
+    '''
+    check credential cache file, either the default one or the one given
+    Returns:
+       True: if the cache file is valid
+       False: cache file does not exist or is not valid
+    '''
+    cmd = ['klist']
+    if cachefile:
+        cmd += cachefile
+    with Popen(cmd,
+               universal_newlines=True, stdout=PIPE, stderr=PIPE) as process:
+        _, _ = process.communicate()
+        return process.returncode == 0
 
 def krb_destroy(cachefile=None):
     '''
@@ -434,13 +449,22 @@ def check_schedule(schedule):
 
     minutes = r"[0-5]?\d"
     hours = r"[0-1]?\d|2[0-3]"
-    day = r"[LW]|\?|0?[1-9]|[1-2]\d|3[01]"
-    month = r"0?[1-9]|1[0-2]|"+"|".join(months)
-    day_week = r"[LW]|\?|[1-7]|"+"|".join(weekdays)
+    day_of_month = r"[LW]|\?|0?[1-9]|[1-2][0-9]|3[0-1]|"+"|".join(weekdays)
+    month = r"0?[0-9]|1[0,1]|"+"|".join(months)
+    day_of_week = r"[LW]|\?|[1-7](#[1-7])?|"+"|".join(weekdays)
     basicfield = r"(\*|((%s)(-(%s))?))(\/(0\d|[1-9]\d?))?"
     field = r"(%s)(,(%s))*" % (basicfield, basicfield)
     total = []
-    for term in minutes, hours, day, month, day_week:
+    # Let's add an additional syntax check here, or even fix it.
+    if day_of_month != '*':
+        if day_of_week == '*':
+            day_of_week = '?'
+            logging.info('WARNING: replacing * by ? for day of week')
+    if day_of_week not in ['*', '?']:
+        if day_of_month == '*':
+            day_of_month = '?'
+            logging.info('WARNING: replacing * by ? for day of month')
+    for term in minutes, hours, day_of_month, month, day_of_week:
         total.append(field % (term, term, term, term))
     valid_chars = re.compile(r"^"+r'\s'.join(total)+"$",
                              re.IGNORECASE)  # pylint: disable=no-member
@@ -457,7 +481,7 @@ def check_target(target):
 def check_command(command):
     """ check if the command contains only valid characters"""
     valid_chars = re.compile(
-        r'^[\s\w\-\+_\/\>\<\&\\\(\)\[\]\$\~\"\'\*\.\!\#\@\;\:\|]+$', flags=re.A)  # pylint: disable=no-member
+        r'^[\s\w\-\+_\/\>\<\&\\\(\)\[\]\$\~\"\'\*\.\,\!\#\@\;\:\|]+$', flags=re.A)  # pylint: disable=no-member
     assert valid_chars.match(command.strip())
 
 

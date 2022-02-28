@@ -42,8 +42,8 @@ def email_user(username, subject, body):
     msg.attach(MIMEText(body))
     smtp_obj = smtplib.SMTP('localhost')
 
-    logging.info(f'Sending email to user {username} with subject:')
-    logging.info(f'{subject}\n')
-    logging.info(f'Body:\n{body}')
+    logging.debug(f'Sending email to user {username} with subject:')
+    logging.debug(f'{subject}\n')
+    logging.debug(f'Body:\n{body}')
 
     smtp_obj.sendmail(msg['From'], msg['To'], msg.as_string())

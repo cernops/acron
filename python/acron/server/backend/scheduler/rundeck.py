@@ -71,6 +71,7 @@ class Rundeck(Scheduler):
         :raises RundeckError: on unexpected backend error
         :returns: Tuple of return code and error message, if any
         '''
+        logging.debug("Executing command %s", cmd)
         returncode, out, err = _execute_command(cmd)
 
         if project_id is not None and returncode == 2:
@@ -176,7 +177,7 @@ class Rundeck(Scheduler):
         Rundeck._config(config)
         cmd = f'rd {obj_name_plural} info'
         cmd += f' --{long_option_name} ' + obj_val
-
+        logging.debug("Executing command %s", cmd)
         returncode, _, _ = _execute_command(cmd)
         obj_exists = returncode == 0
         logging.debug(
@@ -711,6 +712,7 @@ class Rundeck(Scheduler):
         cmd = 'rd projects delete'
         cmd += ' --confirm'
         cmd += ' --project ' + project_id
+        logging.debug("Executing command %s", cmd)
         returncode, _, err = _execute_command(cmd)
         if returncode == 2:
             logging.debug(err)

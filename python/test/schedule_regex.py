@@ -32,6 +32,10 @@ def check_expressions():
         '*/10 * * * *',
         '2-8,*/10 * * * *',
         '0 0 * * FRI',
+        '* * * 0 *',
+        '* * * DEC *',
+        '* * * * ?',
+        '2 7 ? * 2#1',
         '*/50 * * OCT Mon']
     for my_expr in valid_expressions:
         print("Validating %s" % my_expr)
@@ -49,7 +53,6 @@ def check_expressions():
                          '* * * 13 *',
                          '*/0 * * * *',
                          '* * 0 * *',
-                         '* * * 0 *',
                          '* * * Okt Mon']
     for my_expr in wrong_expressions:
         print("Checking  %s" % my_expr)
